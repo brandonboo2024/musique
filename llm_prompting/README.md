@@ -19,11 +19,12 @@ off-the-shelf LLMs and scores them with MuSiQue's unmodified
 | `deepseek` | — → DeepSeek Flash (`deepseek-flash`, thinking off) | 1 |
 | `deepseek_plan` | DeepSeek → Qwen3-4B, one hop at a time | 1 plan + 1 per hop |
 | `small_plan` | Qwen3-4B → Qwen3-4B, one hop at a time | 1 plan + 1 per hop |
+| `deepseek_plan_deepseek` | DeepSeek → DeepSeek, one hop at a time (the same plans as `deepseek_plan`) | 1 plan + 1 per hop |
 
 - Every model call sees the same 20 paragraphs. The `is_supporting` label is removed first.
-- Planned methods:
+- Planned methods (`deepseek_plan_deepseek` reads the same plan log as `deepseek_plan`, so both answer identical plans):
   - The planner writes one plan per question, which is reused unchanged in all three repetitions.
-  - Each hop's `#k` is replaced by Qwen's own answer to hop k.
+  - Each hop's `#k` is replaced by the answerer's own answer to hop k.
   - The final answer is the last hop's answer.
   - An unusable plan (bad JSON, more than 4 steps, or a forward reference) counts as a wrong answer.
 - Sampling: temperature 0.4, top_p 0.9, 3 repetitions. Qwen's seed is derived from each call's key, so reruns reproduce.

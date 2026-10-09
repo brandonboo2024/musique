@@ -5,6 +5,7 @@ Methods (who plans -> who answers):
   deepseek       -        -> DeepSeek      (one call)
   deepseek_plan  DeepSeek -> Qwen3-4B      (plan once per question, then one call per hop)
   small_plan     Qwen3-4B -> Qwen3-4B      (same, Qwen plans)
+  deepseek_plan_deepseek  DeepSeek -> DeepSeek  (the same DeepSeek plans, DeepSeek answers)
 
 Plans are written once per question and reused unchanged across repetitions.
 The final answer of a planned method is the answer to its last hop.
@@ -30,7 +31,10 @@ from llm_prompting.models import CallLog, DeepSeek, Qwen
 GOLD = Path("data/cs470_dev48.jsonl")
 PRED = Path("predictions/cs470")
 LOGS = Path("logs/cs470")
-METHODS = ("small", "deepseek", "deepseek_plan", "small_plan")
+METHODS = ("small", "deepseek", "deepseek_plan", "small_plan", "deepseek_plan_deepseek")
+# method -> (planner, answerer) for the planned methods
+PLANNED = {"deepseek_plan": ("deepseek", "qwen"), "small_plan": ("qwen", "qwen"),
+           "deepseek_plan_deepseek": ("deepseek", "deepseek")}
 DIRECT_CAP, PLAN_CAP, HOP_CAP = 4096, 512, 640  # max output tokens, as in Phase 2b
 
 _models = {}
@@ -59,7 +63,7 @@ def answer_directly(row, who, log, rep):
     return answer, {"valid_format": valid, "cost": cost([call])}
 
 
-def answer_with_plan(row, planner, plan_log, log, rep):
+def answer_with_plan(row, planner, answerer, plan_log, log, rep):
     plan_call = plan_log.call(model(planner), f"{row['id']}/plan",
                               prompts.plan_prompt(row), PLAN_CAP)
     steps = prompts.parse_plan(plan_call["text"])
@@ -69,7 +73,7 @@ def answer_with_plan(row, planner, plan_log, log, rep):
     answers, hops = [], []
     for i, step in enumerate(steps):
         question = prompts.substitute(step, answers)
-        call = log.call(model("qwen"), f"{row['id']}/rep{rep}/hop{i}",
+        call = log.call(model(answerer), f"{row['id']}/rep{rep}/hop{i}",
                         prompts.hop_prompt(question, row), HOP_CAP)
         answer, valid = prompts.final_answer(call["text"])
         answers.append(answer)
@@ -82,13 +86,13 @@ def answer_with_plan(row, planner, plan_log, log, rep):
 def run(method, rep, limit):
     rows = [json.loads(line) for line in GOLD.open()][:limit]
     log = CallLog(LOGS / f"{method}_rep{rep}.calls.jsonl")
-    planner = {"deepseek_plan": "deepseek", "small_plan": "qwen"}.get(method)
+    planner, answerer = PLANNED.get(method, (None, None))
     plan_log = CallLog(LOGS / f"plans_{planner}.calls.jsonl") if planner else None
     PRED.mkdir(parents=True, exist_ok=True)
     predictions, details = [], []
     for n, row in enumerate(rows, 1):
         if planner:
-            answer, info = answer_with_plan(row, planner, plan_log, log, rep)
+            answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep)
         else:
             answer, info = answer_directly(row, "qwen" if method == "small" else "deepseek",
                                            log, rep)
