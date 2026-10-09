@@ -131,7 +131,8 @@ dmypy.json
 # Project specific
 .DS_Store
 data
-predictions
+predictions/*
+!predictions/cs470/
 .hidden_data
 .hidden_predictions
 

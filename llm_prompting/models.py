@@ -1,0 +1,115 @@
+"""The two models and a resume-safe call log.
+
+Every call is appended to a .calls.jsonl log under logs/cs470/. A call whose key
+is already logged is never repeated, so an interrupted run resumes without
+re-billing DeepSeek or re-sampling Qwen.
+"""
+
+import hashlib
+import json
+import os
+import time
+import urllib.request
+from pathlib import Path
+
+QWEN = "Qwen/Qwen3-4B-Instruct-2507"
+QWEN_REVISION = "cdbee75f17c01a7cc42f958dc650907174af0554"  # pinned snapshot
+DEEPSEEK = "deepseek-flash"
+DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
+PRICE_IN, PRICE_OUT = 0.30, 1.20  # US$ per million tokens, DeepSeek Flash peak rates
+TEMPERATURE, TOP_P = 0.4, 0.9
+
+
+class CallLog:
+    def __init__(self, path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.done = {}
+        if self.path.exists():
+            for line in self.path.open():
+                record = json.loads(line)
+                self.done[record["key"]] = record
+
+    def call(self, model, key, messages, max_tokens):
+        if key in self.done:
+            return self.done[key]
+        record = {"key": key, **model.generate(key, messages, max_tokens)}
+        record["prompt_sha256"] = hashlib.sha256(
+            json.dumps(messages, sort_keys=True).encode()).hexdigest()
+        with self.path.open("a") as out:
+            out.write(json.dumps(record, ensure_ascii=False) + "\n")
+        self.done[key] = record
+        return record
+
+
+class Qwen:
+    """Qwen3-4B, local, Hugging Face transformers in BF16."""
+
+    def __init__(self):
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        self.torch = torch
+        self.tokenizer = AutoTokenizer.from_pretrained(QWEN, revision=QWEN_REVISION)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            QWEN, revision=QWEN_REVISION, torch_dtype=torch.bfloat16, device_map="cuda").eval()
+
+    def generate(self, key, messages, max_tokens):
+        torch = self.torch
+        inputs = self.tokenizer.apply_chat_template(
+            messages, add_generation_prompt=True, return_tensors="pt",
+            return_dict=True).to("cuda")
+        ids = inputs["input_ids"]
+        seed = int(hashlib.sha256(key.encode()).hexdigest()[:8], 16)
+        torch.manual_seed(seed)  # same key -> same sample
+        start = time.monotonic()
+        with torch.no_grad():
+            out = self.model.generate(
+                **inputs, max_new_tokens=max_tokens, do_sample=True,
+                temperature=TEMPERATURE, top_p=TOP_P,
+                pad_token_id=self.tokenizer.eos_token_id)
+        new = out[0, ids.shape[1]:]
+        hit_eos = bool((new == self.tokenizer.eos_token_id).any()) or \
+            new[-1].item() in self.tokenizer.all_special_ids
+        return {
+            "model": QWEN,
+            "text": self.tokenizer.decode(new, skip_special_tokens=True),
+            "input_tokens": ids.shape[1],
+            "output_tokens": int(new.shape[0]),
+            "finish_reason": "stop" if hit_eos else "length",
+            "seconds": round(time.monotonic() - start, 3),
+            "usd": 0.0,
+            "seed": seed,
+        }
+
+
+class DeepSeek:
+    """DeepSeek Flash via the hosted API, thinking disabled."""
+
+    def __init__(self):
+        self.key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY") \
+            or os.getenv("OPEN_API_KEY")
+        if not self.key:
+            raise SystemExit("No DeepSeek API key: source the project's .env.local")
+
+    def generate(self, key, messages, max_tokens):
+        payload = {"model": DEEPSEEK, "messages": messages, "max_tokens": max_tokens,
+                   "temperature": TEMPERATURE, "top_p": TOP_P,
+                   "thinking": {"type": "disabled"}}
+        request = urllib.request.Request(
+            DEEPSEEK_URL, data=json.dumps(payload).encode(),
+            headers={"Authorization": f"Bearer {self.key}",
+                     "Content-Type": "application/json"})
+        start = time.monotonic()
+        with urllib.request.urlopen(request, timeout=180) as response:  # no retry: may be billed
+            raw = json.load(response)
+        usage = raw["usage"]
+        return {
+            "model": raw["model"],
+            "text": raw["choices"][0]["message"]["content"] or "",
+            "input_tokens": usage["prompt_tokens"],
+            "output_tokens": usage["completion_tokens"],
+            "finish_reason": raw["choices"][0]["finish_reason"],
+            "seconds": round(time.monotonic() - start, 3),
+            "usd": (usage["prompt_tokens"] * PRICE_IN
+                    + usage["completion_tokens"] * PRICE_OUT) / 1e6,
+        }
