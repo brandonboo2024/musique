@@ -16,6 +16,7 @@ Outputs, per method and repetition:
   logs/cs470/...calls.jsonl                        every model call
 
     python -m llm_prompting.run --method small --rep 0 [--limit 2]
+    python -m llm_prompting.run --dataset phantomwiki48 --method deepseek --rep 5 --only 9,17,41
     python -m llm_prompting.run --evaluate
 """
 
@@ -31,6 +32,8 @@ from llm_prompting.models import CallLog, DeepSeek, Qwen
 GOLD = Path("data/cs470_dev48.jsonl")
 PRED = Path("predictions/cs470")
 LOGS = Path("logs/cs470")
+PILOTS = ("phantomwiki", "morehopqa", "multihoprag")  # see pilot_data.py; outputs go to <dir>/pilot_<name>/
+DATASETS = ("phantomwiki48",) + PILOTS
 METHODS = ("small", "deepseek", "deepseek_plan", "small_plan", "deepseek_plan_deepseek")
 # method -> (planner, answerer) for the planned methods
 PLANNED = {"deepseek_plan": ("deepseek", "qwen"), "small_plan": ("qwen", "qwen"),
@@ -66,13 +69,13 @@ def answer_directly(row, who, log, rep):
 def answer_with_plan(row, planner, answerer, plan_log, log, rep):
     plan_call = plan_log.call(model(planner), f"{row['id']}/plan",
                               prompts.plan_prompt(row), PLAN_CAP)
-    steps = prompts.parse_plan(plan_call["text"])
+    steps = prompts.parse_plan(plan_call["text"], row.get("max_steps", prompts.MAX_STEPS))
     calls = [plan_call]
     if steps is None:  # unusable plan: the question counts as wrong
         return "", {"plan": None, "raw_plan": plan_call["text"], "cost": cost(calls)}
     answers, hops = [], []
     for i, step in enumerate(steps):
-        question = prompts.substitute(step, answers)
+        question = prompts.substitute(step, answers) + row.get("answer_note", "")
         call = log.call(model(answerer), f"{row['id']}/rep{rep}/hop{i}",
                         prompts.hop_prompt(question, row), HOP_CAP)
         answer, valid = prompts.final_answer(call["text"])
@@ -83,8 +86,18 @@ def answer_with_plan(row, planner, answerer, plan_log, log, rep):
                          "plan_cost": cost([plan_call])}
 
 
-def run(method, rep, limit):
+def use_dataset(name):
+    """Point GOLD, PRED and LOGS at another dataset instead of the MuSiQue sample."""
+    global GOLD, PRED, LOGS
+    sub = f"pilot_{name}" if name in PILOTS else name
+    GOLD = Path(f"data/{sub}.jsonl" if name in PILOTS else f"data/cs470_{name}.jsonl")
+    PRED, LOGS = PRED / sub, LOGS / sub
+
+
+def run(method, rep, limit, only=None):
     rows = [json.loads(line) for line in GOLD.open()][:limit]
+    if only:  # question numbers as in the trace (Q1 = first row)
+        rows = [rows[n - 1] for n in only]
     log = CallLog(LOGS / f"{method}_rep{rep}.calls.jsonl")
     planner, answerer = PLANNED.get(method, (None, None))
     plan_log = CallLog(LOGS / f"plans_{planner}.calls.jsonl") if planner else None
@@ -101,7 +114,8 @@ def run(method, rep, limit):
         details.append({"id": row["id"], "method": method, "rep": rep,
                         "answer": answer, "gold": row["answer"], **info})
         print(f"{method} rep{rep} {n}/{len(rows)} {row['id']}: {answer!r} (gold {row['answer']!r})")
-    suffix = "" if limit is None else f".limit{limit}"
+    suffix = ("" if limit is None else f".limit{limit}") + (
+        f".only{'-'.join(map(str, only))}" if only else "")
     write_jsonl(PRED / f"{method}_rep{rep}{suffix}.jsonl", predictions)
     write_jsonl(PRED / f"{method}_rep{rep}{suffix}.details.jsonl", details)
 
@@ -113,7 +127,22 @@ def write_jsonl(path, rows):
 
 
 def evaluate():
-    """Score every complete prediction file with the official evaluator."""
+    """Score every complete prediction file with the official evaluator.
+
+    PhantomWiki answers are sets, which MuSiQue's evaluator cannot score, so
+    they are scored with PhantomWiki's own rule (phantomwiki.score)."""
+    if GOLD.name == "cs470_phantomwiki48.jsonl":
+        from llm_prompting.phantomwiki import score
+        gold = {json.loads(line)["id"]: json.loads(line)["answer_set"] for line in GOLD.open()}
+        for path in sorted(PRED.glob("*_rep[0-9].jsonl")):
+            scores = {r["id"]: score(r["predicted_answer"], gold[r["id"]])
+                      for r in map(json.loads, path.open())}
+            n = len(scores)
+            path.with_suffix(".metrics.json").write_text(json.dumps({
+                "answer_em": sum(s["em"] for s in scores.values()) / n,
+                "answer_f1": sum(s["f1"] for s in scores.values()) / n,
+                "per_question": scores}, indent=1))
+        return
     for path in sorted(PRED.glob("*_rep[0-9].jsonl")):
         metrics = path.with_suffix(".metrics.json")
         subprocess.run([sys.executable, "evaluate_v1.0.py", str(path), str(GOLD),
@@ -125,12 +154,17 @@ def main():
     parser.add_argument("--method", choices=METHODS)
     parser.add_argument("--rep", type=int, default=0)
     parser.add_argument("--limit", type=int, help="smoke test on the first N questions")
+    parser.add_argument("--only", type=lambda s: [int(n) for n in s.split(",")],
+                        help="only these question numbers, as in the trace (e.g. 9,17,41)")
     parser.add_argument("--evaluate", action="store_true")
+    parser.add_argument("--dataset", choices=DATASETS, help="another dataset instead of MuSiQue")
     args = parser.parse_args()
+    if args.dataset:
+        use_dataset(args.dataset)
     if args.evaluate:
         evaluate()
     else:
-        run(args.method, args.rep, args.limit)
+        run(args.method, args.rep, args.limit, args.only)
 
 
 if __name__ == "__main__":

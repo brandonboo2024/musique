@@ -63,3 +63,46 @@ python -m llm_prompting.run --evaluate      # official scores -> *.metrics.json
 ## Scorer check
 - Gold answers as predictions give answer EM/F1 1.0; blank answers give 0.0.
 - MuSiQue's released model predictions (Google Drive) could not be downloaded via `gdown` on 2026-10-09, so the README numbers were not re-checked.
+
+## PhantomWiki (second dataset)
+`phantomwiki.py` builds `data/cs470_phantomwiki48.jsonl` from PhantomWiki v1
+(Gong et al., 2025), instance `depth_20_size_50_seed_1` on Hugging Face
+(`kilian-group/phantom-wiki-v1`): 8 questions at each difficulty 3, 6, 9, 12,
+15, 18 (`sample_phantomwiki48.json`). All 51 articles are the passages of
+every call. Each row also carries the gold answer set after every relation
+(`gold_chain`), computed with SWI-Prolog from the instance's own facts; it is
+used only by `trace.py` and never reaches a model.
+
+Differences from MuSiQue: answers are comma-separated sets (every question
+and hop ends with an instruction to list them all), plans may have up to 12
+steps, and scoring is PhantomWiki's rule (set EM and set F1, as in its
+`phantom_eval/score.py`), not `evaluate_v1.0.py`.
+
+```sh
+# raw files in ../../data/raw/hop_candidates/: pw_qa_50, pw_corpus_50, pw_db_50 (.parquet)
+nix develop ../..#cope -c nix shell nixpkgs#swi-prolog -c ../cope/venv/bin/python -m llm_prompting.phantomwiki ../../data/raw/hop_candidates
+python -m llm_prompting.run --dataset phantomwiki48 --method small --rep 0
+python -m llm_prompting.run --dataset phantomwiki48 --evaluate
+```
+Outputs go to `predictions/cs470/phantomwiki48/` and `logs/cs470/phantomwiki48/`.
+
+`pilot_data.py` holds the 8-question pilots (PhantomWiki, MoreHopQA,
+MultiHop-RAG) used to choose the dataset (`--dataset phantomwiki|morehopqa|multihoprag`).
+
+## Tracing failures
+`python -m llm_prompting.trace [--dataset phantomwiki48] [--rep N]` writes
+`predictions/cs470/[<dataset>/]trace_repN.org`: per question, the gold chain,
+then for each method the plan, each hop's exact input (passages elided) and
+raw output, the answer read from it, and which gold step that answer equals.
+The first hop that matches no gold step is usually where the chain broke.
+
+## Small runs by hand
+Pick question numbers from a trace's summary table (Q1-Q48), and use a
+repetition number above 2 so that new samples are drawn (calls already in a
+log are replayed, not re-run) and RESULTS.org (reps 0-2) is left untouched:
+```sh
+python -m llm_prompting.run --dataset phantomwiki48 --method deepseek --rep 5 --only 9,17,41
+python -m llm_prompting.trace --dataset phantomwiki48 --rep 5 --suffix .only9-17-41
+```
+Plans are logged per question, not per repetition, so a new repetition
+reuses the same plans.

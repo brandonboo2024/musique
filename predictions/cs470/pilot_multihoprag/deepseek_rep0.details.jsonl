@@ -1,0 +1,8 @@
+{"id": "mr_inference__2177", "method": "deepseek", "rep": 0, "answer": "Google", "gold": "Google", "valid_format": true, "cost": {"calls": 1, "input_tokens": 28736, "output_tokens": 330, "usd": 0.009017, "capped_calls": 0}}
+{"id": "mr_inference__2504", "method": "deepseek", "rep": 0, "answer": "Sam Bankman-Fried", "gold": "Sam Bankman-Fried", "valid_format": true, "cost": {"calls": 1, "input_tokens": 15668, "output_tokens": 255, "usd": 0.005006, "capped_calls": 0}}
+{"id": "mr_comparison__1283", "method": "deepseek", "rep": 0, "answer": "Yes", "gold": "Yes", "valid_format": true, "cost": {"calls": 1, "input_tokens": 16372, "output_tokens": 204, "usd": 0.005156, "capped_calls": 0}}
+{"id": "mr_comparison__1355", "method": "deepseek", "rep": 0, "answer": "Yes", "gold": "Yes", "valid_format": true, "cost": {"calls": 1, "input_tokens": 26268, "output_tokens": 84, "usd": 0.007981, "capped_calls": 0}}
+{"id": "mr_temporal__500", "method": "deepseek", "rep": 0, "answer": "No", "gold": "no", "valid_format": true, "cost": {"calls": 1, "input_tokens": 17902, "output_tokens": 523, "usd": 0.005998, "capped_calls": 0}}
+{"id": "mr_temporal__1836", "method": "deepseek", "rep": 0, "answer": "No", "gold": "Yes", "valid_format": true, "cost": {"calls": 1, "input_tokens": 14003, "output_tokens": 660, "usd": 0.004993, "capped_calls": 0}}
+{"id": "mr_null__350", "method": "deepseek", "rep": 0, "answer": "UNKNOWN", "gold": "UNKNOWN", "valid_format": true, "cost": {"calls": 1, "input_tokens": 31029, "output_tokens": 45, "usd": 0.009363, "capped_calls": 0}}
+{"id": "mr_null__2288", "method": "deepseek", "rep": 0, "answer": "UNKNOWN", "gold": "UNKNOWN", "valid_format": true, "cost": {"calls": 1, "input_tokens": 17197, "output_tokens": 78, "usd": 0.005253, "capped_calls": 0}}
