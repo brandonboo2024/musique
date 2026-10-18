@@ -106,3 +106,19 @@ python -m llm_prompting.trace --dataset phantomwiki48 --rep 5 --suffix .only9-17
 ```
 Plans are logged per question, not per repetition, so a new repetition
 reuses the same plans.
+
+## Atomic hops (branch `cs470-atomic-hops`)
+`atomic.py` re-executes DeepSeek's saved PhantomWiki plans with Qwen3-4B under four step
+formats (`baseline`, `answer_first`, `atomic`, `atomic_reason`; see its docstring), to test
+whether one lookup per call fixes Qwen's execution of correct plans. It runs locally on
+vLLM with Qwen's FP8 build (an 8 GB GPU cannot hold the BF16 model), so compare the
+conditions with each other rather than with the runs above.
+
+```sh
+# data/cs470_phantomwiki48.jsonl: rebuilt with phantomwiki.py (see above)
+nix develop ../..#cope -c ../../.venv-vllm/bin/python -m llm_prompting.atomic
+```
+Outputs: `logs/cs470/phantomwiki48/atomic/<condition>.calls.jsonl` (every call, with the
+step question) and `predictions/cs470/phantomwiki48/atomic/<condition>_rep<N>.*`. Step
+scoring against the PhantomWiki oracle is in the CS470 workspace
+(`analysis/failure_cases_lib.py`, `atomic_hop_table`); results are in its RESULTS.org.
