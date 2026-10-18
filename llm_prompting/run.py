@@ -63,7 +63,8 @@ def answer_directly(row, who, log, rep):
     call = log.call(model(who), f"{row['id']}/rep{rep}/direct",
                     prompts.direct_prompt(row), DIRECT_CAP)
     answer, valid = prompts.final_answer(call["text"])
-    return answer, {"valid_format": valid, "cost": cost([call])}
+    return answer, {"valid_format": valid, "finish_reason": call["finish_reason"],
+                    "cost": cost([call])}
 
 
 def answer_with_plan(row, planner, answerer, plan_log, log, rep):
@@ -80,7 +81,9 @@ def answer_with_plan(row, planner, answerer, plan_log, log, rep):
                         prompts.hop_prompt(question, row), HOP_CAP)
         answer, valid = prompts.final_answer(call["text"])
         answers.append(answer)
-        hops.append({"question": question, "answer": answer, "valid_format": valid})
+        hops.append({"question": question, "answer": answer, "valid_format": valid,
+                     "finish_reason": call["finish_reason"],
+                     "output_tokens": call["output_tokens"]})
         calls.append(call)
     return answers[-1], {"plan": steps, "hops": hops, "cost": cost(calls),
                          "plan_cost": cost([plan_call])}

@@ -57,7 +57,7 @@ python -m llm_prompting.run --evaluate      # official scores -> *.metrics.json
 ## Outputs
 - `predictions/cs470/<method>_rep<N>.jsonl`: official format.
 - `predictions/cs470/<method>_rep<N>.metrics.json`: `evaluate_v1.0.py` output.
-- `predictions/cs470/<method>_rep<N>.details.jsonl`: plan, hop questions and answers, tokens and US$ per question.
+- `predictions/cs470/<method>_rep<N>.details.jsonl`: plan, hop questions and answers, each hop's finish reason and output tokens (`length` means the hop hit its cap and its unfinished text was passed on), tokens and US$ per question. Runs before 18 Oct 2026 lack the per-hop finish reason; it is in the call log.
 - `logs/cs470/*.calls.jsonl`: every model call (output text, tokens, seconds, cost). Prompts are stored as a hash and rebuilt from the code and data.
 
 ## Scorer check
