@@ -8,6 +8,11 @@ Methods (who plans -> who answers):
   deepseek_plan_deepseek  DeepSeek -> DeepSeek  (the same DeepSeek plans, DeepSeek answers)
 
 Plans are written once per question and reused unchanged across repetitions.
+
+--small qwen3-8b|gemma3-4b replaces Qwen3-4B with another small model served by a
+local vLLM server (models.SMALL_MODELS). Its outputs go to a <small>/ subdirectory,
+and the DeepSeek plans are the saved ones: a plan missing from the log is an error,
+never a new DeepSeek call.
 The final answer of a planned method is the answer to its last hop.
 
 Outputs, per method and repetition:
@@ -18,16 +23,18 @@ Outputs, per method and repetition:
     python -m llm_prompting.run --method small --rep 0 [--limit 2]
     python -m llm_prompting.run --dataset phantomwiki48 --method deepseek --rep 5 --only 9,17,41
     python -m llm_prompting.run --evaluate
+    python -m llm_prompting.run --small qwen3-8b --dataset phantomwiki48 --method deepseek_plan --rep 0
 """
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
 from pathlib import Path
 
 from llm_prompting import prompts
-from llm_prompting.models import CallLog, DeepSeek, Qwen
+from llm_prompting.models import SMALL_MODELS, CallLog, DeepSeek, LocalSmall, Qwen
 
 GOLD = Path("data/cs470_dev48.jsonl")
 PRED = Path("predictions/cs470")
@@ -40,12 +47,16 @@ PLANNED = {"deepseek_plan": ("deepseek", "qwen"), "small_plan": ("qwen", "qwen")
            "deepseek_plan_deepseek": ("deepseek", "deepseek")}
 DIRECT_CAP, PLAN_CAP, HOP_CAP = 4096, 512, 640  # max output tokens, as in Phase 2b
 
+SMALL = None  # None: Qwen3-4B in BF16 (Phase 2); else a models.SMALL_MODELS name
 _models = {}
 
 
 def model(name):
     if name not in _models:
-        _models[name] = Qwen() if name == "qwen" else DeepSeek()
+        if name == "qwen":
+            _models[name] = LocalSmall(SMALL) if SMALL else Qwen()
+        else:
+            _models[name] = DeepSeek()
     return _models[name]
 
 
@@ -68,8 +79,12 @@ def answer_directly(row, who, log, rep):
 
 
 def answer_with_plan(row, planner, answerer, plan_log, log, rep):
-    plan_call = plan_log.call(model(planner), f"{row['id']}/plan",
-                              prompts.plan_prompt(row), PLAN_CAP)
+    key = f"{row['id']}/plan"
+    if SMALL and planner == "deepseek":
+        assert key in plan_log.done, f"no saved DeepSeek plan for {key}"
+        assert plan_log.done[key]["prompt_sha256"] == hashlib.sha256(json.dumps(
+            prompts.plan_prompt(row), sort_keys=True).encode()).hexdigest(), key
+    plan_call = plan_log.call(model(planner), key, prompts.plan_prompt(row), PLAN_CAP)
     steps = prompts.parse_plan(plan_call["text"], row.get("max_steps", prompts.MAX_STEPS))
     calls = [plan_call]
     if steps is None:  # unusable plan: the question counts as wrong
@@ -101,10 +116,17 @@ def run(method, rep, limit, only=None):
     rows = [json.loads(line) for line in GOLD.open()][:limit]
     if only:  # question numbers as in the trace (Q1 = first row)
         rows = [rows[n - 1] for n in only]
-    log = CallLog(LOGS / f"{method}_rep{rep}.calls.jsonl")
     planner, answerer = PLANNED.get(method, (None, None))
-    plan_log = CallLog(LOGS / f"plans_{planner}.calls.jsonl") if planner else None
-    PRED.mkdir(parents=True, exist_ok=True)
+    pred, logs = PRED, LOGS
+    if SMALL:
+        assert "qwen" in (planner, answerer) or method == "small", \
+            f"{method} uses no small model; reuse the saved run"
+        pred, logs = PRED / SMALL, LOGS / SMALL
+    log = CallLog(logs / f"{method}_rep{rep}.calls.jsonl")
+    # DeepSeek's plans are shared by every small model; a small model's own plans are not.
+    plan_log = CallLog((LOGS if planner == "deepseek" else logs)
+                       / f"plans_{planner}.calls.jsonl") if planner else None
+    pred.mkdir(parents=True, exist_ok=True)
     predictions, details = [], []
     for n, row in enumerate(rows, 1):
         if planner:
@@ -119,8 +141,8 @@ def run(method, rep, limit, only=None):
         print(f"{method} rep{rep} {n}/{len(rows)} {row['id']}: {answer!r} (gold {row['answer']!r})")
     suffix = ("" if limit is None else f".limit{limit}") + (
         f".only{'-'.join(map(str, only))}" if only else "")
-    write_jsonl(PRED / f"{method}_rep{rep}{suffix}.jsonl", predictions)
-    write_jsonl(PRED / f"{method}_rep{rep}{suffix}.details.jsonl", details)
+    write_jsonl(pred / f"{method}_rep{rep}{suffix}.jsonl", predictions)
+    write_jsonl(pred / f"{method}_rep{rep}{suffix}.details.jsonl", details)
 
 
 def write_jsonl(path, rows):
@@ -160,11 +182,17 @@ def main():
     parser.add_argument("--only", type=lambda s: [int(n) for n in s.split(",")],
                         help="only these question numbers, as in the trace (e.g. 9,17,41)")
     parser.add_argument("--evaluate", action="store_true")
+    parser.add_argument("--small", choices=sorted(SMALL_MODELS),
+                        help="another small model on the local vLLM server instead of Qwen3-4B")
     parser.add_argument("--dataset", choices=DATASETS, help="another dataset instead of MuSiQue")
     args = parser.parse_args()
     if args.dataset:
         use_dataset(args.dataset)
+    global SMALL, PRED
+    SMALL = args.small
     if args.evaluate:
+        if SMALL:
+            PRED = PRED / SMALL
         evaluate()
     else:
         run(args.method, args.rep, args.limit, args.only)

@@ -82,6 +82,48 @@ class Qwen:
         }
 
 
+# Other small models, served by a local vLLM OpenAI-compatible server (the 8 GB
+# laptop GPU needs quantised builds: AWQ 4-bit for Qwen3-8B, FP8 for Gemma 3 4B).
+# name -> (served model, pinned revision).
+SMALL_MODELS = {
+    "qwen3-8b": ("Qwen/Qwen3-8B-AWQ", "4da05a8edb55c6046cce958586c33b61da07bb79"),
+    "gemma3-4b": ("RedHatAI/gemma-3-4b-it-FP8-dynamic",
+                  "e8535f618f3ff62cd745395b05eb8cbde0851b71"),
+}
+SMALL_URL = os.getenv("SMALL_URL", "http://127.0.0.1:8000/v1/chat/completions")
+
+
+class LocalSmall:
+    """A SMALL_MODELS entry on the local vLLM server; same sampling and seeding as Qwen."""
+
+    def __init__(self, name):
+        self.name = name
+        self.model, self.revision = SMALL_MODELS[name]
+
+    def generate(self, key, messages, max_tokens):
+        seed = int(hashlib.sha256(key.encode()).hexdigest()[:8], 16)  # as in Qwen
+        payload = {"model": self.model, "messages": messages, "max_tokens": max_tokens,
+                   "temperature": TEMPERATURE, "top_p": TOP_P, "seed": seed,
+                   "chat_template_kwargs": {"enable_thinking": False}}
+        request = urllib.request.Request(
+            SMALL_URL, data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"})
+        start = time.monotonic()
+        with urllib.request.urlopen(request, timeout=1800) as response:
+            raw = json.load(response)
+        usage = raw["usage"]
+        return {
+            "model": f"{self.model}@{self.revision}",
+            "text": raw["choices"][0]["message"]["content"] or "",
+            "input_tokens": usage["prompt_tokens"],
+            "output_tokens": usage["completion_tokens"],
+            "finish_reason": raw["choices"][0]["finish_reason"],
+            "seconds": round(time.monotonic() - start, 3),
+            "usd": 0.0,
+            "seed": seed,
+        }
+
+
 class DeepSeek:
     """DeepSeek Flash via the hosted API, thinking disabled."""
 
