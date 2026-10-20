@@ -83,9 +83,13 @@ class Qwen:
 
 
 # Other small models, served by a local vLLM OpenAI-compatible server (the 8 GB
-# laptop GPU needs quantised builds: AWQ 4-bit for Qwen3-8B, FP8 for Gemma 3 4B).
+# laptop GPU needs quantised builds: AWQ 4-bit for Qwen3-8B, FP8 for Gemma 3 4B and
+# the original April Qwen3-4B; Qwen2.5-1.5B, COPE's small model, fits in BF16).
 # name -> (served model, pinned revision).
 SMALL_MODELS = {
+    "qwen2.5-1.5b": ("Qwen/Qwen2.5-1.5B-Instruct",
+                     "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"),
+    "qwen3-4b-orig": ("Qwen/Qwen3-4B-FP8", "96b30dc13593a244a5e59e84687309f53c375cfa"),
     "qwen3-8b": ("Qwen/Qwen3-8B-AWQ", "4da05a8edb55c6046cce958586c33b61da07bb79"),
     "gemma3-4b": ("RedHatAI/gemma-3-4b-it-FP8-dynamic",
                   "e8535f618f3ff62cd745395b05eb8cbde0851b71"),

@@ -9,10 +9,11 @@ Methods (who plans -> who answers):
 
 Plans are written once per question and reused unchanged across repetitions.
 
---small qwen3-8b|gemma3-4b replaces Qwen3-4B with another small model served by a
-local vLLM server (models.SMALL_MODELS). Its outputs go to a <small>/ subdirectory,
-and the DeepSeek plans are the saved ones: a plan missing from the log is an error,
-never a new DeepSeek call.
+--small <name> (qwen2.5-1.5b, qwen3-4b-orig, qwen3-8b, gemma3-4b) replaces
+Qwen3-4B with another small model served by a local vLLM server
+(models.SMALL_MODELS). Its outputs go to a <small>/ subdirectory, and the DeepSeek
+plans are the saved ones: a plan missing from the log is an error, never a new
+DeepSeek call.
 The final answer of a planned method is the answer to its last hop.
 
 Outputs, per method and repetition:
