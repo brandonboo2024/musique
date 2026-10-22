@@ -54,6 +54,21 @@ python -m llm_prompting.run --method small --rep 0
 python -m llm_prompting.run --evaluate      # official scores -> *.metrics.json
 ```
 
+## Aggregation modes (October 2026 follow-up)
+In the planned methods, a step learns an earlier answer only through `#k`, and the last step's answer is final. Each planned method therefore also has two variants that end the chain with one aggregation call. That call sees the original question, the passages and every subquestion with its answer.
+
+| Method | Steps | Final answer |
+|---|---|---|
+| `<m>_hidden` | exactly `<m>`'s steps (saved calls reused and checked by prompt hash) | aggregation call |
+| `<m>_context` | each step also sees all earlier subquestions and their answers | aggregation call |
+| `<m>_hidden_dsread`, `<m>_context_dsread` | the steps of `<m>` / `<m>_context`, reused | aggregation call by DeepSeek |
+
+- `<m>` is `deepseek_plan`, `small_plan` or `deepseek_plan_deepseek`. The `_dsread` variants exist only where Qwen answers the steps.
+- All variants reuse the saved plans and never draw a new one.
+- They read answers with `prompts.read_answer`, which also accepts a `FINAL_ANSWER:` after other text on its line or in Markdown bold. A step with no answer line is shown to later calls as "NO ANSWER" rather than as its unfinished text.
+- The original methods keep `final_answer`, so their saved runs reproduce unchanged.
+- Offline checks, with no model calls: `python -m unittest llm_prompting.test_aggregate`.
+
 ## Outputs
 - `predictions/cs470/<method>_rep<N>.jsonl`: official format.
 - `predictions/cs470/<method>_rep<N>.metrics.json`: `evaluate_v1.0.py` output.

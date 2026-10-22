@@ -9,6 +9,18 @@ Methods (who plans -> who answers):
 
 Plans are written once per question and reused unchanged across repetitions.
 
+Each planned method also has two variants that end the chain with an aggregation
+call (the original question, the passages and every subquestion with its answer)
+instead of taking the last step's answer, so that a step that never received an
+earlier answer (a plan without #k) cannot lose it:
+  <method>_hidden   the steps are exactly the original method's (saved calls, reused
+                    and checked by prompt hash); only the aggregation call is new
+  <method>_context  every step also sees all earlier subquestions and their answers
+Both reuse the saved plans and never draw a new one. For the methods whose steps
+Qwen answers, <method>_hidden_dsread and <method>_context_dsread reuse the steps of
+<method> and <method>_context and let DeepSeek make the aggregation call, which
+separates the steps from the final reader.
+
 --small <name> (qwen2.5-1.5b, qwen3-4b-orig, qwen3-8b, gemma3-4b) replaces
 Qwen3-4B with another small model served by a local vLLM server
 (models.SMALL_MODELS). Its outputs go to a <small>/ subdirectory, and the DeepSeek
@@ -24,7 +36,8 @@ Outputs, per method and repetition:
     python -m llm_prompting.run --method small --rep 0 [--limit 2]
     python -m llm_prompting.run --dataset phantomwiki48 --method deepseek --rep 5 --only 9,17,41
     python -m llm_prompting.run --evaluate
-    python -m llm_prompting.run --small qwen3-8b --dataset phantomwiki48 --method deepseek_plan --rep 0
+    python -m llm_prompting.run --small qwen3-8b --dataset phantomwiki48 \
+        --method deepseek_plan --rep 0
 """
 
 import argparse
@@ -40,12 +53,18 @@ from llm_prompting.models import SMALL_MODELS, CallLog, DeepSeek, LocalSmall, Qw
 GOLD = Path("data/cs470_dev48.jsonl")
 PRED = Path("predictions/cs470")
 LOGS = Path("logs/cs470")
-PILOTS = ("phantomwiki", "morehopqa", "multihoprag")  # see pilot_data.py; outputs go to <dir>/pilot_<name>/
+# see pilot_data.py; outputs go to <dir>/pilot_<name>/
+PILOTS = ("phantomwiki", "morehopqa", "multihoprag")
 DATASETS = ("phantomwiki48",) + PILOTS
-METHODS = ("small", "deepseek", "deepseek_plan", "small_plan", "deepseek_plan_deepseek")
 # method -> (planner, answerer) for the planned methods
 PLANNED = {"deepseek_plan": ("deepseek", "qwen"), "small_plan": ("qwen", "qwen"),
            "deepseek_plan_deepseek": ("deepseek", "deepseek")}
+MODES = ("hidden", "context")  # see the module docstring; "chain" is the original
+DSREAD = "_dsread"  # suffix: DeepSeek makes the aggregation call over reused steps
+PLANNED.update({f"{m}_{mode}": PLANNED[m] for m in list(PLANNED) for mode in MODES})
+PLANNED.update({f"{m}_{mode}{DSREAD}": PLANNED[m] for m in ("deepseek_plan", "small_plan")
+                for mode in MODES})
+METHODS = ("small", "deepseek") + tuple(PLANNED)
 DIRECT_CAP, PLAN_CAP, HOP_CAP = 4096, 512, 640  # max output tokens, as in Phase 2b
 
 SMALL = None  # None: Qwen3-4B in BF16 (Phase 2); else a models.SMALL_MODELS name
@@ -79,17 +98,45 @@ def answer_directly(row, who, log, rep):
                     "cost": cost([call])}
 
 
-def answer_with_plan(row, planner, answerer, plan_log, log, rep):
+def split_method(method):
+    """-> (original method, mode, aggregation reader or None), e.g.
+    "small_plan_context_dsread" -> ("small_plan", "context", "deepseek")."""
+    reader = None
+    if method.endswith(DSREAD):
+        method, reader = method[:-len(DSREAD)], "deepseek"
+    for mode in MODES:
+        if method.endswith("_" + mode):
+            return method[:-len(mode) - 1], mode, reader
+    return method, "chain", reader
+
+
+def reuse(step_log, key, messages):
+    """A saved step call, checked to have been asked with exactly these messages."""
+    assert key in step_log.done, f"no saved step {key} in {step_log.path}"
+    call = step_log.done[key]
+    assert call["prompt_sha256"] == hashlib.sha256(json.dumps(
+        messages, sort_keys=True).encode()).hexdigest(), f"step prompt differs: {key}"
+    return call
+
+
+def answer_with_plan(row, planner, answerer, plan_log, log, rep, mode="chain", step_log=None,
+                     reader=None):
     key = f"{row['id']}/plan"
+    if mode != "chain":
+        assert key in plan_log.done, f"no saved plan for {key}"
     if SMALL and planner == "deepseek":
         assert key in plan_log.done, f"no saved DeepSeek plan for {key}"
         assert plan_log.done[key]["prompt_sha256"] == hashlib.sha256(json.dumps(
             prompts.plan_prompt(row), sort_keys=True).encode()).hexdigest(), key
-    plan_call = plan_log.call(model(planner), key, prompts.plan_prompt(row), PLAN_CAP)
+    plan_call = (plan_log.done[key] if mode != "chain"  # saved; never loads the planner
+                 else plan_log.call(model(planner), key, prompts.plan_prompt(row), PLAN_CAP))
     steps = prompts.parse_plan(plan_call["text"], row.get("max_steps", prompts.MAX_STEPS))
     calls = [plan_call]
     if steps is None:  # unusable plan: the question counts as wrong
         return "", {"plan": None, "raw_plan": plan_call["text"], "cost": cost(calls)}
+    if mode != "chain":
+        return answer_and_aggregate(row, steps, answerer, plan_call, log, rep, mode, step_log,
+                                    reader or answerer)
     answers, hops = [], []
     for i, step in enumerate(steps):
         question = prompts.substitute(step, answers) + row.get("answer_note", "")
@@ -105,6 +152,42 @@ def answer_with_plan(row, planner, answerer, plan_log, log, rep):
                          "plan_cost": cost([plan_call])}
 
 
+def answer_and_aggregate(row, steps, answerer, plan_call, log, rep, mode, step_log, reader):
+    """The hidden and context modes: run (or reuse, from step_log) the steps, then one
+    aggregation call by reader."""
+    note = row.get("answer_note", "")
+    answers, history, hops, calls = [], [], [], [plan_call]
+    for i, step in enumerate(steps):
+        key = f"{row['id']}/rep{rep}/hop{i}"
+        if mode == "hidden":  # the original step, exactly as it was asked
+            question = prompts.substitute(step, answers) + note
+            call = reuse(step_log, key, prompts.hop_prompt(question, row))
+            answers.append(prompts.final_answer(call["text"])[0])
+        else:
+            question = prompts.substitute(step, answers) + note
+            messages = prompts.context_hop_prompt(question, history, row)
+            call = (reuse(step_log, key, messages) if step_log
+                    else log.call(model(answerer), key, messages, HOP_CAP))
+            answers.append(prompts.read_answer(call["text"]) or "UNKNOWN")
+        record = prompts.step_record(question, call["text"], note)
+        history.append(record)
+        hops.append({"question": question, "answer": record["answer"],
+                     "valid_format": prompts.final_answer(call["text"])[1],
+                     "finish_reason": call["finish_reason"],
+                     "output_tokens": call["output_tokens"]})
+        calls.append(call)
+    agg = log.call(model(reader), f"{row['id']}/rep{rep}/aggregate",
+                   prompts.aggregate_prompt(row, history), DIRECT_CAP)
+    calls.append(agg)
+    answer = prompts.read_answer(agg["text"])
+    return answer if answer is not None else agg["text"].strip(), {
+        "plan": steps, "hops": hops,
+        "aggregate": {"valid_format": prompts.final_answer(agg["text"])[1],
+                      "finish_reason": agg["finish_reason"],
+                      "output_tokens": agg["output_tokens"]},
+        "cost": cost(calls), "plan_cost": cost([plan_call])}
+
+
 def use_dataset(name):
     """Point GOLD, PRED and LOGS at another dataset instead of the MuSiQue sample."""
     global GOLD, PRED, LOGS
@@ -118,12 +201,17 @@ def run(method, rep, limit, only=None):
     if only:  # question numbers as in the trace (Q1 = first row)
         rows = [rows[n - 1] for n in only]
     planner, answerer = PLANNED.get(method, (None, None))
+    base, mode, reader = split_method(method)
     pred, logs = PRED, LOGS
     if SMALL:
         assert "qwen" in (planner, answerer) or method == "small", \
             f"{method} uses no small model; reuse the saved run"
         pred, logs = PRED / SMALL, LOGS / SMALL
     log = CallLog(logs / f"{method}_rep{rep}.calls.jsonl")
+    # Steps reused rather than run: hidden reuses the original method's steps; a
+    # DeepSeek-read variant reuses the steps of the run it re-reads.
+    step_source = base if mode == "hidden" else f"{base}_context" if reader else None
+    step_log = CallLog(logs / f"{step_source}_rep{rep}.calls.jsonl") if step_source else None
     # DeepSeek's plans are shared by every small model; a small model's own plans are not.
     plan_log = CallLog((LOGS if planner == "deepseek" else logs)
                        / f"plans_{planner}.calls.jsonl") if planner else None
@@ -131,7 +219,8 @@ def run(method, rep, limit, only=None):
     predictions, details = [], []
     for n, row in enumerate(rows, 1):
         if planner:
-            answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep)
+            answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep,
+                                            mode, step_log, reader)
         else:
             answer, info = answer_directly(row, "qwen" if method == "small" else "deepseek",
                                            log, rep)

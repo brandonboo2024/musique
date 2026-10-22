@@ -26,9 +26,10 @@ class CallLog:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.done = {}
         if self.path.exists():
-            for line in self.path.open():
-                record = json.loads(line)
-                self.done[record["key"]] = record
+            with self.path.open() as lines:
+                for line in lines:
+                    record = json.loads(line)
+                    self.done[record["key"]] = record
 
     def call(self, model, key, messages, max_tokens):
         if key in self.done:

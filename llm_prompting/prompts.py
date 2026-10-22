@@ -30,6 +30,11 @@ PLAN = (
     "Do not answer the subquestions. Return only a JSON object with the key "
     "subquestions containing an ordered list of question strings. No other keys."
 )
+AGGREGATE = (
+    "The question was broken into subquestions, which were answered one at a time; "
+    "they are given as subquestion_answers. Use those answers together with the "
+    "passages to answer the original question, not the last subquestion. "
+)
 MAX_STEPS = 4  # MuSiQue; a dataset row may set its own "max_steps" (PhantomWiki: 12)
 
 
@@ -68,6 +73,35 @@ def hop_prompt(subquestion, row):
     return messages(evidence(subquestion, row) + "\n" + REASON)
 
 
+# The "hidden" and "context" modes (run.py) end every chain with an aggregation call
+# instead of taking the last step's answer. history is a list of
+# {"subquestion", "answer"} for the steps answered so far, as made by step_record.
+
+def step_record(subquestion, text, note=""):
+    """A step as the later calls see it: the subquestion as asked (without the
+    dataset's answer note) and its answer, marked when the step gave none."""
+    answer = read_answer(text)
+    if subquestion.endswith(note):
+        subquestion = subquestion[:len(subquestion) - len(note)]
+    return {"subquestion": subquestion.strip(),
+            "answer": answer if answer is not None else "NO ANSWER (the step did not finish)"}
+
+
+def context_hop_prompt(subquestion, history, row):
+    """A step that also sees every earlier subquestion and its answer."""
+    data = json.loads(evidence(subquestion, row))
+    data["earlier_subquestion_answers"] = history
+    return messages(json.dumps(data, sort_keys=True, ensure_ascii=False) + "\n" + REASON)
+
+
+def aggregate_prompt(row, history):
+    """The final call: the original question, the passages and every step's answer."""
+    data = json.loads(evidence(row["question"], row))
+    data["subquestion_answers"] = history
+    return messages(json.dumps(data, sort_keys=True, ensure_ascii=False) + "\n"
+                    + AGGREGATE + REASON)
+
+
 def final_answer(text):
     """Last FINAL_ANSWER line; valid only if it is the single, last line."""
     matches = re.findall(r"(?im)^[ \t]*FINAL[_ ]ANSWER:[ \t]*([^\r\n]*)", text)
@@ -78,6 +112,26 @@ def final_answer(text):
     valid = (len(matches) == 1 and bool(answer)
              and bool(re.match(r"(?i)^\s*FINAL[_ ]ANSWER:", last_line)))
     return answer, valid
+
+
+def read_answer(text):
+    """The answer on the last FINAL_ANSWER line, read leniently; None if there is none.
+
+    Unlike final_answer, the marker may follow other text on its line ("... Miller
+    County, Missouri. FINAL_ANSWER: Miller County") or be wrapped in Markdown
+    ("**FINAL_ANSWER:** X"), and an empty marker line takes the next non-empty line.
+    The new modes use it; the original methods keep final_answer, so their saved runs
+    reproduce unchanged."""
+    lines = text.splitlines()
+    for i in range(len(lines) - 1, -1, -1):
+        m = re.search(r"(?i)FINAL[_ ]ANSWER\W*?:(.*)$", lines[i])
+        if not m:
+            continue
+        answer = m[1].strip(" \t*`_")
+        if not answer:
+            answer = next((x.strip(" \t*`_") for x in lines[i + 1:] if x.strip(" \t*`_")), "")
+        return answer or None
+    return None
 
 
 def parse_plan(text, max_steps=MAX_STEPS):
