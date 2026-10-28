@@ -1,0 +1,48 @@
+{"id": "2hop__159741_40169", "predicted_answer": "April 1191", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__1667_40502", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__231890_595414", "predicted_answer": "Miller County", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__310112_88165", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__31585_61048", "predicted_answer": "Robert Oppenheimer", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__367336_97805", "predicted_answer": "Winter War", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__41158_22946", "predicted_answer": "George Sarton", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__415518_616002", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__481809_184805", "predicted_answer": "Tompion", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__528263_865831", "predicted_answer": "Randall County", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__543050_245420", "predicted_answer": "Citrus Heights", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__61143_165532", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__709357_136043", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__71016_75184", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__818692_113442", "predicted_answer": "13 August 1896", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "2hop__820739_250752", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__108833_720914_27537", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__28404_160713_77246", "predicted_answer": "The question asks for the meaning of a word that is also a majority religion in India, when the country that disavowed the Taliban was created, in the Arabic dictionary.\n\nStep-by-step:\n\n1. Identify the country that disavowed the Taliban: From passage 9, \"Pakistan was also engaged in the War in North-West Pakistan (Waziristan War). Supported by U.S. intelligence, Pakistan was attempting to remove the Taliban insurgency and al-Qaeda element from the northern tribal areas.\" This indicates Pakistan disavowed the Taliban.\n\n2. What is the majority religion in India? From passage 14: \"According to the 2011 census, 79.8% of the population of India practice Hinduism.\" So Hinduism is the majority religion in India.\n\n3. What is the Arabic equivalent of \"Hindu\"? From passage 16: \"The Arabic equivalent Al-Hind likewise referred to the country of India.\"\n\n4. The question asks: \"What is the meaning of the word that is also a majority religion in what became India when the country that disavowed the Taliban was created in the Arabic dictionary?\"\n\n   - The word \"Hindu\" in Arabic is \"Al-Hind\", which refers to India.\n   - But the question is asking for the meaning of the word (in Arabic dictionary) that is also a majority religion in India.\n\n   - \"Hindu\" as a religion is derived from the geographical term \"Sindhu\" (Indus River), and in ancient Persian texts, \"Hindu\" referred to people beyond the Indus.\n   - The Arabic term \"Al-Hind\" refers to India, not to the religion.\n   - However, the religion \"Hinduism\" is the majority religion in India.\n\n5. Is there a word in the Arabic dictionary that means \"Hindu\" and also refers to the majority religion in India?\n\n   - The Arabic word \"Al-Hind\" refers to India, not to Hinduism.\n   - The term \"Hindu\" as a religion is not directly translated in Arabic as a religious term; it is derived from geography.\n   - There is no direct evidence in the passages that the Arabic word for \"Hindu\" (as a religion) is used or defined.\n\n6. The question seems to be asking for the meaning of the word \"Hindu\" in the Arabic dictionary — which is \"Al-Hind\", meaning India.\n\n   - But the majority religion in India is Hinduism, not India.\n   - So the word \"Hindu\" (as a religion) is not the same as \"Al-Hind\" (as a country).\n   - The question is confusing the term \"Hindu\" (as a religion) with \"Hindu\" (as a geographical term).\n\n7. The only direct reference to the Arabic term is in passage 16: \"The Arabic equivalent Al-Hind likewise referred to the country of India.\"\n\n   - There is no mention of the Arabic word for \"Hinduism\" or its meaning.\n\n8. Therefore, the word", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__305282_282081_73772", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__41865_55331_34700", "predicted_answer": "the Soviet Union and the United States", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__545624_2053_52946", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__6362_14336_21111", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__649930_15840_36002", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__698501_503371_21711", "predicted_answer": "15th century", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__756602_831637_91775", "predicted_answer": "Navy SEALs", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__786067_228453_10972", "predicted_answer": "1970s", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__79039_131926_90707", "predicted_answer": "The body of water by the city home to the Juicy Lucy is Minneapolis, as stated in the passage about Minneapolis, which mentions the Jucy Lucy and the Mississippi River. The Ohio River is mentioned in several passages, but the question asks where the body of water (in Minneapolis) meets the Ohio River. However, Minneapolis is located on the Mississippi River, not directly connected to the Ohio River. The Ohio River is in a different region and does not meet the Mississippi River in Minneapolis. There is no evidence that the body of water in Minneapolis (the Mississippi River) meets the Ohio River. Therefore, the question cannot be answered based on the provided evidence.\n\nUNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__857_846_7794", "predicted_answer": "8.005 million", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop1__857_846_7810", "predicted_answer": "US$16,041", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop2__132957_132967_40768", "predicted_answer": "early 1980s", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop2__326964_320101_7713", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop2__326964_846_7713", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__159467_725495_49925_349426", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__373866_5186_10659_23296", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__436202_378185_282674_759393", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__726152_153080_33897_81096", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__726675_508773_85832_745702", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__749363_49925_13759_736921", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__860115_798482_131926_90707", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__88342_49853_128008_92225", "predicted_answer": "in the first week of April", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__9007_698949_157828_162309", "predicted_answer": "1992", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__94201_642284_131926_89261", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop2__105527_14670_8987_8529", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop2__161602_474028_88460_63559", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop2__567956_39078_8987_8974", "predicted_answer": "Paraguay", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop2__71753_729371_70784_79935", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop3__312119_132409_223216_35031", "predicted_answer": "3rd", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop3__668721_132409_146285_35031", "predicted_answer": "", "predicted_support_idxs": [], "predicted_answerable": true}
