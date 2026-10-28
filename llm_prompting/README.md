@@ -151,6 +151,8 @@ FP8 build), which answers the BF16 model's saved Qwen plans. The Qwen baselines 
 the chains and `_hidden`) were rerun the same way, so all Qwen rows share one engine:
 ```sh
 # from the workspace root
+# on the RTX 5070 Ti (Blackwell) also VLLM_USE_DEEP_GEMM=0: DeepGEMM JIT-compiles its FP8
+# kernels and needs a CUDA toolkit home, which NixOS does not provide
 VLLM_USE_FLASHINFER_SAMPLER=0 nix develop .#cope -c .venv-vllm/bin/vllm serve \
   Qwen/Qwen3-4B-Instruct-2507-FP8 --revision 8591804019c8b22094c3b5b4454e0edc05dffc98 \
   --kv-cache-dtype fp8 --attention-backend TRITON_ATTN --max-model-len 16384 \
@@ -192,3 +194,5 @@ python -m llm_prompting.run --small qwen3-4b-fp8 --dataset dev300 --method deeps
 python -m llm_prompting.run --small qwen3-4b-fp8 --dataset dev300 --method deepseek_plan__rag_final
 python -m unittest llm_prompting.test_rag   # offline checks, no model calls, no GPU
 ```
+`llm_prompting/run_retrieval_study.sh <dataset> <rep>` runs every cell of the study in
+eight parallel lanes (five Qwen lanes on the vLLM server, three DeepSeek lanes).
