@@ -30,12 +30,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-SAMPLE = Path("llm_prompting/sample_phantomwiki48.json")
-GOLD = Path("data/cs470_phantomwiki48.jsonl")
+# name -> questions per difficulty level (None: every question at the level)
+SAMPLES = {"phantomwiki48": 8, "phantomwiki146": None}
 DB = Path("data/phantomwiki_size50_seed1.pl")
 SEED = 20261009
 LEVELS = (3, 6, 9, 12, 15, 18)
-PER_LEVEL = 8
 MAX_STEPS = 12  # plan length cap; above the longest gold chain in the sample (checked on build)
 NOTE = " If there are several answers, list all of them separated by commas."
 SEP = ","
@@ -103,7 +102,7 @@ def gold_plan(row):
     return plan
 
 
-def gold_chains(rows):
+def gold_chains(rows, program=Path("data/phantomwiki_chains.pl")):
     """Run every prefix of every question's chain in SWI-Prolog."""
     lines = [f':- consult("{DB}").', ":- initialization(main, main).",
              "main :- forall(step(Id, I, V, G), (findall(V, G, L), sort(L, S),"
@@ -113,7 +112,6 @@ def gold_chains(rows):
         for i in range(len(goals)):
             body = ", ".join(g for g, _ in goals[: i + 1])
             lines.append(f'step("{qid}", {i}, {goals[i][1]}, ({body})).')
-    program = Path("data/phantomwiki_chains.pl")
     program.write_text("\n".join(lines) + "\n")
     out = subprocess.run(["swipl", str(program)], capture_output=True, text=True, check=True)
     chains = {}
@@ -126,25 +124,31 @@ def gold_chains(rows):
 def main():
     import pandas as pd
     src = Path(sys.argv[1])
+    name = sys.argv[2] if len(sys.argv) > 2 else "phantomwiki48"
+    per_level = SAMPLES[name]
+    sample_path = Path(f"llm_prompting/sample_{name}.json")
+    gold_path = Path(f"data/cs470_{name}.jsonl")
     qa = pd.read_parquet(src / "pw_qa_50.parquet")
     corpus = pd.read_parquet(src / "pw_corpus_50.parquet")
     DB.write_text(pd.read_parquet(src / "pw_db_50.parquet").content[0])
-    if SAMPLE.exists():
-        ids = json.loads(SAMPLE.read_text())["ids"]  # never redraw a committed sample
+    if sample_path.exists():
+        ids = json.loads(sample_path.read_text())["ids"]  # never redraw a committed sample
     else:
         rng = random.Random(SEED)
         ids = []
         for level in LEVELS:
             pool = sorted(qa[qa.difficulty.astype(int) == level].id)
-            ids += sorted(rng.sample(pool, PER_LEVEL))
-        SAMPLE.write_text(json.dumps(
+            ids += sorted(pool if per_level is None else rng.sample(pool, per_level))
+        sample_path.write_text(json.dumps(
             {"source": "kilian-group/phantom-wiki-v1 depth_20_size_50_seed_1",
-             "seed": SEED, "levels": LEVELS, "ids": ids}, indent=1))
+             "seed": SEED, "levels": LEVELS, "per_level": per_level, "ids": ids}, indent=1))
     by_id = {r.id: r for r in qa.itertuples()}
-    chains = gold_chains([(i, by_id[i].prolog["query"]) for i in ids])
+    program = Path("data/phantomwiki_chains.pl" if name == "phantomwiki48"
+                   else f"data/phantomwiki_chains_{name}.pl")
+    chains = gold_chains([(i, by_id[i].prolog["query"]) for i in ids], program)
     paragraphs = [{"idx": i, "title": r.title, "paragraph_text": r.article, "is_supporting": False}
                   for i, r in enumerate(corpus.itertuples())]
-    with GOLD.open("w") as out:
+    with gold_path.open("w") as out:
         for qid in ids:
             r = by_id[qid]
             answers = [str(a) for a in r.answer]
@@ -158,7 +162,7 @@ def main():
                 "answerable": True, "difficulty": int(r.difficulty), "type": int(r.type),
                 "gold_chain": chain, "max_steps": MAX_STEPS, "answer_note": NOTE,
             }, ensure_ascii=False) + "\n")
-    print(f"{len(ids)} questions -> {SAMPLE}, {GOLD}")
+    print(f"{len(ids)} questions -> {sample_path}, {gold_path}")
 
 
 if __name__ == "__main__":

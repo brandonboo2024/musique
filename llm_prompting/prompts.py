@@ -109,8 +109,9 @@ def plan_prompt(row):
                     + plan_instruction(row.get("max_steps", MAX_STEPS)))
 
 
-def hop_prompt(subquestion, row):
-    return messages(evidence(subquestion, row) + "\n" + REASON)
+def hop_prompt(subquestion, row, commit=False):
+    """commit: the step is told the question is answerable (COMMIT) instead of REASON."""
+    return messages(evidence(subquestion, row) + "\n" + (COMMIT if commit else REASON))
 
 
 # The "hidden" and "context" modes (run.py) end every chain with an aggregation call
@@ -134,12 +135,13 @@ def context_hop_prompt(subquestion, history, row):
     return messages(json.dumps(data, sort_keys=True, ensure_ascii=False) + "\n" + REASON)
 
 
-def aggregate_prompt(row, history):
-    """The final call: the original question, the passages and every step's answer."""
+def aggregate_prompt(row, history, commit=False):
+    """The final call: the original question, the passages and every step's answer.
+    commit: the no-abstain instruction (COMMIT) instead of REASON."""
     data = json.loads(evidence(row["question"], row))
     data["subquestion_answers"] = history
     return messages(json.dumps(data, sort_keys=True, ensure_ascii=False) + "\n"
-                    + AGGREGATE + REASON)
+                    + AGGREGATE + (COMMIT if commit else REASON))
 
 
 def guided_prompt(row, steps, variant="plain"):

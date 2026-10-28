@@ -20,6 +20,7 @@ the articles of the people a gold chain step reads from (see phantomwiki_support
 
 import json
 import math
+import os
 import re
 from collections import Counter
 from functools import cache
@@ -90,18 +91,26 @@ def phantomwiki_support(row):
 
 # ------------------------------------------------------------------ dense
 class Embedder:
-    """Qwen3-Embedding: left padding, last-token pooling, normalised vectors."""
+    """Qwen3-Embedding: left padding, last-token pooling, normalised vectors.
 
-    def __init__(self):
+    Queries are embedded on the CPU (float32) by default (RETRIEVAL_DEVICE overrides), so
+    that many runner processes can retrieve next to a vLLM server, and so that a query
+    always gets the same ranking (a rag_final cell re-retrieves its steps' passages and
+    must rebuild their prompts exactly). The pool's paragraph vectors are computed once on
+    the GPU (float16) and cached."""
+
+    def __init__(self, device):
         import torch
         from transformers import AutoModel, AutoTokenizer
 
         name, revision = EMBEDDER
         self.torch = torch
+        self.device = device
         self.tokenizer = AutoTokenizer.from_pretrained(name, revision=revision,
                                                        padding_side="left")
+        dtype = torch.float16 if self.device == "cuda" else torch.float32
         self.model = AutoModel.from_pretrained(name, revision=revision,
-                                               torch_dtype=torch.float16).cuda().eval()
+                                               dtype=dtype).to(self.device).eval()
 
     def __call__(self, texts, query=False, batch=64, max_length=512):
         if query:
@@ -110,15 +119,16 @@ class Embedder:
         with self.torch.inference_mode():
             for i in range(0, len(texts), batch):
                 enc = self.tokenizer(texts[i:i + batch], padding=True, truncation=True,
-                                     max_length=max_length, return_tensors="pt").to("cuda")
+                                     max_length=max_length,
+                                     return_tensors="pt").to(self.device)
                 last = self.model(**enc).last_hidden_state[:, -1]
                 out.append(self.torch.nn.functional.normalize(last.float(), dim=-1).cpu())
         return self.torch.cat(out).numpy()
 
 
 @cache
-def embedder():
-    return Embedder()
+def embedder(device=None):
+    return Embedder(device or os.environ.get("RETRIEVAL_DEVICE", "cpu"))
 
 
 @cache
@@ -131,7 +141,7 @@ def pool_vectors(dataset):
         return vectors
     CACHE.mkdir(parents=True, exist_ok=True)
     texts = [p["title"] + "\n" + p["paragraph_text"] for p in pool(dataset)]
-    vectors = embedder()(texts).astype(np.float32)
+    vectors = embedder("cuda")(texts).astype(np.float32)
     np.save(path, vectors)
     return vectors
 

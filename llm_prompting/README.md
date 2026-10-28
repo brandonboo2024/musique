@@ -169,3 +169,26 @@ done
 python -m unittest llm_prompting.test_guided   # offline checks, no model calls
 ```
 `*_cap4096_hidden` reuses the steps of `*_cap4096`, so it runs after it.
+
+## Retrieval vs given context (`__<context>` methods)
+Any direct, guided or chain method can take its evidence from retrieval instead of the
+row's passages, with a `__<context>` suffix (see `run.py` and `retrieval.py`):
+- `__ragq` / `__ragq15`: the question's top 5 / top 15 passages (direct; guided `__ragq`);
+- `__ragsub`: the union of every plan sub-question's top 5, `#k` unfilled (guided);
+- `__rag`: each chain step retrieves for its own sub-question, `#k` filled in;
+- `__rag_final`: the `__rag` steps (reused), then one final call over every step's answer
+  and the union of their passages.
+
+Chains without abstaining (`deepseek_plan_commit`, `gold_plan_commit`, ...) and the gold
+plan with DeepSeek steps (`gold_plan_deepseek`) complete the grid. The pools are every
+distinct MuSiQue dev paragraph and the 51 PhantomWiki articles; queries are embedded on the
+CPU (Qwen3-Embedding-0.6B), paragraph vectors once on the GPU and cached in
+`data/cache/retrieval/`. Samples: `python -m llm_prompting.sample dev300` and
+`python -m llm_prompting.phantomwiki ../../data/raw/hop_candidates phantomwiki146` (needs
+`swipl`). New samples need DeepSeek's plans first:
+```sh
+python -m llm_prompting.run --dataset dev300 --draw-plans
+python -m llm_prompting.run --small qwen3-4b-fp8 --dataset dev300 --method deepseek_plan__rag
+python -m llm_prompting.run --small qwen3-4b-fp8 --dataset dev300 --method deepseek_plan__rag_final
+python -m unittest llm_prompting.test_rag   # offline checks, no model calls, no GPU
+```
