@@ -6,13 +6,15 @@
 #     lanes:   qwen-direct qwen-guided-ds qwen-guided-gold qwen-chain-ds qwen-chain-gold
 #              ds-direct ds-guided ds-chain (default: all, in parallel)
 #
-# Run from external/musique with the cope venv active and, for the Qwen lanes, the FP8
-# Qwen3-4B vLLM server on :8000. Cells inside a lane run in order (a __rag chain before
+# Run from external/musique with, for the Qwen lanes, the FP8 Qwen3-4B vLLM server on
+# :8000. PYTHON must have transformers >= 4.51 (Qwen3 embeddings): on Hephaestus the cope
+# venv (the default), on the laptop PYTHON=../../.venv-vllm/bin/python. Cells inside a lane run in order (a __rag chain before
 # its __rag_final); lanes run in parallel. A cell already in the logs is replayed, not
 # re-run. Each lane prints "done <cell>" or "FAILED <cell>"; errors go to
 # logs/cs470/retrieval_study_<dataset>_rep<rep>_<lane>.err.
 set -u
 dataset=$1 rep=$2; shift 2
+PYTHON=${PYTHON:-../cope/venv/bin/python}
 flag=""; [ "$dataset" != dev48 ] && flag="--dataset $dataset"
 with_commit() {  # <base> [contexts...]: the base and its no-abstain twin, each per context
   local base=$1; shift
@@ -35,7 +37,7 @@ run_lane() {
   [[ $lane == qwen-* ]] && small="--small qwen3-4b-fp8"
   local err="logs/cs470/retrieval_study_${dataset}_rep${rep}_${lane}.err"
   for cell in ${LANES[$lane]}; do
-    if ../cope/venv/bin/python -m llm_prompting.run $small $flag --method "$cell" --rep "$rep" \
+    if "$PYTHON" -m llm_prompting.run $small $flag --method "$cell" --rep "$rep" \
         > /dev/null 2>> "$err"; then echo "done $lane $cell"; else echo "FAILED $lane $cell"; fi
   done
   echo "LANE DONE $lane"
