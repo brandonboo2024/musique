@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -94,7 +95,12 @@ SMALL_MODELS = {
     "qwen3-8b": ("Qwen/Qwen3-8B-AWQ", "4da05a8edb55c6046cce958586c33b61da07bb79"),
     "gemma3-4b": ("RedHatAI/gemma-3-4b-it-FP8-dynamic",
                   "e8535f618f3ff62cd745395b05eb8cbde0851b71"),
+    # Qwen3-4B-Instruct-2507 itself, in Qwen's FP8 build (as in atomic.py): the 8 GB
+    # stand-in for the BF16 engine. It answers Qwen3-4B's saved plans, never its own.
+    "qwen3-4b-fp8": ("Qwen/Qwen3-4B-Instruct-2507-FP8",
+                     "8591804019c8b22094c3b5b4454e0edc05dffc98"),
 }
+SHARES_QWEN_PLANS = {"qwen3-4b-fp8"}  # these reuse the BF16 Qwen3-4B's saved plans
 SMALL_URL = os.getenv("SMALL_URL", "http://127.0.0.1:8000/v1/chat/completions")
 
 
@@ -106,16 +112,42 @@ class LocalSmall:
         self.model, self.revision = SMALL_MODELS[name]
 
     def generate(self, key, messages, max_tokens):
+        """One call. A prompt too long for the server's context with max_tokens more (a
+        chain step whose subject is an earlier step's unfinished text) is retried with
+        the output cap that still fits; one that does not fit at all is recorded with no
+        output and finish_reason "context_length". The record keeps the cap used."""
         seed = int(hashlib.sha256(key.encode()).hexdigest()[:8], 16)  # as in Qwen
-        payload = {"model": self.model, "messages": messages, "max_tokens": max_tokens,
-                   "temperature": TEMPERATURE, "top_p": TOP_P, "seed": seed,
-                   "chat_template_kwargs": {"enable_thinking": False}}
-        request = urllib.request.Request(
-            SMALL_URL, data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"})
-        start = time.monotonic()
-        with urllib.request.urlopen(request, timeout=1800) as response:
-            raw = json.load(response)
+        start, cap = time.monotonic(), max_tokens
+        for attempt in range(2):
+            payload = {"model": self.model, "messages": messages, "max_tokens": cap,
+                       "temperature": TEMPERATURE, "top_p": TOP_P, "seed": seed,
+                       "chat_template_kwargs": {"enable_thinking": False}}
+            request = urllib.request.Request(
+                SMALL_URL, data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(request, timeout=1800) as response:
+                    raw = json.load(response)
+                break
+            except urllib.error.HTTPError as error:
+                message = error.read().decode(errors="replace")
+                if error.code != 400 or "maximum context length" not in message or attempt:
+                    raise
+                # the exact prompt length, from the server's tokenizer
+                count = json.loads(urllib.request.urlopen(urllib.request.Request(
+                    SMALL_URL.replace("/v1/chat/completions", "/tokenize"),
+                    data=json.dumps({"model": self.model, "messages": messages,
+                                     "add_generation_prompt": True,
+                                     "chat_template_kwargs": {"enable_thinking": False}
+                                     }).encode(),
+                    headers={"Content-Type": "application/json"}), timeout=600).read())
+                cap = count["max_model_len"] - count["count"]
+                if cap < 1:
+                    return {"model": f"{self.model}@{self.revision}", "text": "",
+                            "input_tokens": count["count"], "output_tokens": 0,
+                            "finish_reason": "context_length",
+                            "seconds": round(time.monotonic() - start, 3), "usd": 0.0,
+                            "seed": seed, "max_tokens_used": 0}
         usage = raw["usage"]
         return {
             "model": f"{self.model}@{self.revision}",
@@ -126,6 +158,7 @@ class LocalSmall:
             "seconds": round(time.monotonic() - start, 3),
             "usd": 0.0,
             "seed": seed,
+            **({"max_tokens_used": cap} if cap != max_tokens else {}),
         }
 
 

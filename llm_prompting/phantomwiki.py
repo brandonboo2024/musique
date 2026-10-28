@@ -68,6 +68,41 @@ def chain_goals(query):
     return out
 
 
+ATTR_WORDS = {"dob": "date of birth", "job": "occupation", "hobby": "hobby"}
+
+
+def gold_plan(row):
+    """The gold chain as a plan in the planners' format: one subquestion per goal,
+    #k for the answer of step k, worded as the question words each relation."""
+    question = row["question"].lower()
+    introduced, plan = {}, []  # variable -> step number that introduced it
+
+    def subject(arg):
+        return arg.strip('"') if arg.startswith('"') else f"#{introduced[arg]}"
+
+    def wording(rel):
+        words = rel.replace("_", " ")
+        for form in (words.replace(" in law", "-in-law").replace("great ", "great-"), words):
+            if form in question:
+                return form
+        raise ValueError(f"{rel!r} not worded in {row['question']!r}")
+
+    for goal in (g["goal"] for g in row["gold_chain"]):
+        if m := re.match(r"aggregate_all\(count, distinct\((\w+)\((\w+), \w+\)\), \w+\)$", goal):
+            noun = re.search(r"how many ([\w\- ]+?) does", question)[1]
+            plan.append(f"How many {noun} does {subject(m[2])} have?")
+            continue
+        pred, a, b = re.match(r"(\w+)\(([^,]+), (.+)\)$", goal).groups()
+        if pred in ATTR_WORDS and b.startswith('"'):
+            plan.append(f"Who is the person whose {ATTR_WORDS[pred]} is {b.strip(chr(34))}?")
+        elif pred in ATTR_WORDS:
+            plan.append(f"What is the {ATTR_WORDS[pred]} of {subject(a)}?")
+        else:
+            plan.append(f"Who is the {wording(pred)} of {subject(a)}?")
+        introduced[b if pred not in ATTR_WORDS or not b.startswith('"') else a] = len(plan)
+    return plan
+
+
 def gold_chains(rows):
     """Run every prefix of every question's chain in SWI-Prolog."""
     lines = [f':- consult("{DB}").', ":- initialization(main, main).",
@@ -102,8 +137,9 @@ def main():
         for level in LEVELS:
             pool = sorted(qa[qa.difficulty.astype(int) == level].id)
             ids += sorted(rng.sample(pool, PER_LEVEL))
-        SAMPLE.write_text(json.dumps({"source": "kilian-group/phantom-wiki-v1 depth_20_size_50_seed_1",
-                                      "seed": SEED, "levels": LEVELS, "ids": ids}, indent=1))
+        SAMPLE.write_text(json.dumps(
+            {"source": "kilian-group/phantom-wiki-v1 depth_20_size_50_seed_1",
+             "seed": SEED, "levels": LEVELS, "ids": ids}, indent=1))
     by_id = {r.id: r for r in qa.itertuples()}
     chains = gold_chains([(i, by_id[i].prolog["query"]) for i in ids])
     paragraphs = [{"idx": i, "title": r.title, "paragraph_text": r.article, "is_supporting": False}

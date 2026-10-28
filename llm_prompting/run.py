@@ -21,12 +21,35 @@ Qwen answers, <method>_hidden_dsread and <method>_context_dsread reuse the steps
 <method> and <method>_context and let DeepSeek make the aggregation call, which
 separates the steps from the final reader.
 
---small <name> (qwen2.5-1.5b, qwen3-4b-orig, qwen3-8b, gemma3-4b) replaces
+--small <name> (qwen2.5-1.5b, qwen3-4b-orig, qwen3-8b, gemma3-4b, qwen3-4b-fp8) replaces
 Qwen3-4B with another small model served by a local vLLM server
 (models.SMALL_MODELS). Its outputs go to a <small>/ subdirectory, and the DeepSeek
 plans are the saved ones: a plan missing from the log is an error, never a new
-DeepSeek call.
+DeepSeek call. qwen3-4b-fp8 (Qwen3-4B-Instruct-2507 in FP8, for the 8 GB laptop) also
+reuses the BF16 Qwen3-4B's saved plans instead of writing its own.
 The final answer of a planned method is the answer to its last hop.
+
+Planning as guidance, and the controls that separate the plan from the splitting:
+  guided_deepseek_plan           DeepSeek's saved plan, Qwen answers the original
+                                 question in one call with the plan in context
+  guided_small_plan              the same with Qwen's saved plan
+  guided_gold                    the same with the gold chain written as a plan
+  guided_deepseek_plan_deepseek  DeepSeek's saved plan, DeepSeek answers in one call
+  guided_gold_deepseek           the gold plan, DeepSeek answers in one call
+  <guided method>_checked        the same, but the model is told the plan may be wrong
+                                 and to check it against the question first
+  <guided method>_sets           the same, but the model is told #k may stand for several
+                                 people and to carry all of them
+  <guided method>_commit         guidance with the no-abstain instruction of *_commit
+  small_commit, deepseek_commit  direct, but told every question is answerable from the
+                                 passages and to give the best-supported answer, not UNKNOWN
+  guided_deepseek_rev[_deepseek] DeepSeek's saved plan after DeepSeek checks it against
+                                 the question and corrects it (plans_deepseek_rev log)
+  gold_plan                      the gold plan run as a chain, Qwen answers each step
+  <method>_cap4096               deepseek_plan or small_plan with 4,096 output tokens
+                                 per step (the direct cap) instead of 640; with
+                                 _hidden, the final call over those steps
+The guided methods use a saved plan only, never a new one, and its prompt must match.
 
 Outputs, per method and repetition:
   predictions/cs470/<method>_rep<N>.jsonl          official format, for evaluate_v1.0.py
@@ -47,8 +70,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from llm_prompting import prompts
-from llm_prompting.models import SMALL_MODELS, CallLog, DeepSeek, LocalSmall, Qwen
+from llm_prompting import phantomwiki, prompts
+from llm_prompting.models import (SHARES_QWEN_PLANS, SMALL_MODELS, CallLog, DeepSeek,
+                                  LocalSmall, Qwen)
 
 GOLD = Path("data/cs470_dev48.jsonl")
 PRED = Path("predictions/cs470")
@@ -61,10 +85,29 @@ PLANNED = {"deepseek_plan": ("deepseek", "qwen"), "small_plan": ("qwen", "qwen")
            "deepseek_plan_deepseek": ("deepseek", "deepseek")}
 MODES = ("hidden", "context")  # see the module docstring; "chain" is the original
 DSREAD = "_dsread"  # suffix: DeepSeek makes the aggregation call over reused steps
+CAP = "_cap4096"  # suffix: steps get the direct cap instead of HOP_CAP
 PLANNED.update({f"{m}_{mode}": PLANNED[m] for m in list(PLANNED) for mode in MODES})
 PLANNED.update({f"{m}_{mode}{DSREAD}": PLANNED[m] for m in ("deepseek_plan", "small_plan")
                 for mode in MODES})
-METHODS = ("small", "deepseek") + tuple(PLANNED)
+PLANNED["gold_plan"] = ("gold", "qwen")  # "gold": the gold chain, no planner call
+PLANNED.update({f"{m}{CAP}{suffix}": PLANNED[m] for m in ("deepseek_plan", "small_plan")
+                for suffix in ("", "_hidden")})
+GUIDED = {"guided_deepseek_plan": ("deepseek", "qwen"), "guided_small_plan": ("qwen", "qwen"),
+          "guided_gold": ("gold", "qwen"),
+          "guided_deepseek_plan_deepseek": ("deepseek", "deepseek"),
+          "guided_gold_deepseek": ("gold", "deepseek")}
+GUIDED.update({"guided_deepseek_rev": ("deepseek_rev", "qwen"),
+               "guided_deepseek_rev_deepseek": ("deepseek_rev", "deepseek")})
+CHECKED = "_checked"  # suffix: the plan is offered as possibly wrong (GUIDED_CHECKED)
+SETS = "_sets"  # suffix: #k is described as possibly several people (GUIDED_SETS)
+COMMIT = "_commit"  # suffix: guidance with the no-abstain instruction (prompts.COMMIT)
+GUIDED.update({f"{m}{suffix}": GUIDED[m] for m in ("guided_deepseek_plan",
+                                                    "guided_small_plan",
+                                                    "guided_deepseek_plan_deepseek",
+                                                    "guided_gold", "guided_gold_deepseek")
+               for suffix in (CHECKED, SETS, COMMIT)})
+COMMITTED = ("small_commit", "deepseek_commit")
+METHODS = ("small", "deepseek") + COMMITTED + tuple(PLANNED) + tuple(GUIDED)
 DIRECT_CAP, PLAN_CAP, HOP_CAP = 4096, 512, 640  # max output tokens, as in Phase 2b
 
 SMALL = None  # None: Qwen3-4B in BF16 (Phase 2); else a models.SMALL_MODELS name
@@ -90,17 +133,22 @@ def cost(calls):
     }
 
 
-def answer_directly(row, who, log, rep):
+def answer_directly(row, who, log, rep, commit=False):
     call = log.call(model(who), f"{row['id']}/rep{rep}/direct",
-                    prompts.direct_prompt(row), DIRECT_CAP)
+                    prompts.direct_prompt(row, commit), DIRECT_CAP)
     answer, valid = prompts.final_answer(call["text"])
+    if commit:  # a new cell: read leniently, as the other new cells are
+        lenient = prompts.read_answer(call["text"])
+        answer = lenient if lenient is not None else call["text"].strip()
     return answer, {"valid_format": valid, "finish_reason": call["finish_reason"],
                     "cost": cost([call])}
 
 
 def split_method(method):
     """-> (original method, mode, aggregation reader or None), e.g.
-    "small_plan_context_dsread" -> ("small_plan", "context", "deepseek")."""
+    "small_plan_context_dsread" -> ("small_plan", "context", "deepseek").
+    The step cap stays in the original method: "deepseek_plan_cap4096_hidden" ->
+    ("deepseek_plan_cap4096", "hidden", None)."""
     reader = None
     if method.endswith(DSREAD):
         method, reader = method[:-len(DSREAD)], "deepseek"
@@ -119,19 +167,79 @@ def reuse(step_log, key, messages):
     return call
 
 
-def answer_with_plan(row, planner, answerer, plan_log, log, rep, mode="chain", step_log=None,
-                     reader=None):
+def gold_plan(row):
+    """The gold chain as a plan: PhantomWiki's from its Prolog goals, MuSiQue's its
+    own decomposition questions. The hop answers are never part of it."""
+    if "gold_chain" in row:
+        return phantomwiki.gold_plan(row)
+    hops = row["question_decomposition"]
+    steps = [hop["question"] for hop in hops]
+    for i, step in enumerate(steps):  # a step may name only its own subject, never an answer
+        assert not any(h["answer"].lower() in step.lower() for h in hops[i:]), (row["id"], step)
+    return steps
+
+
+def saved_plan(row, planner, plan_log, reuse_only):
+    """-> (plan call, steps or None). reuse_only: the plan must be in the log, asked with
+    exactly today's prompt; the planner is never loaded."""
     key = f"{row['id']}/plan"
-    if mode != "chain":
-        assert key in plan_log.done, f"no saved plan for {key}"
-    if SMALL and planner == "deepseek":
-        assert key in plan_log.done, f"no saved DeepSeek plan for {key}"
+    if reuse_only or (SMALL and (planner == "deepseek" or SMALL in SHARES_QWEN_PLANS)):
+        assert key in plan_log.done, f"no saved {planner} plan for {key}"
         assert plan_log.done[key]["prompt_sha256"] == hashlib.sha256(json.dumps(
             prompts.plan_prompt(row), sort_keys=True).encode()).hexdigest(), key
-    plan_call = (plan_log.done[key] if mode != "chain"  # saved; never loads the planner
-                 else plan_log.call(model(planner), key, prompts.plan_prompt(row), PLAN_CAP))
-    steps = prompts.parse_plan(plan_call["text"], row.get("max_steps", prompts.MAX_STEPS))
-    calls = [plan_call]
+        plan_call = plan_log.done[key]
+    else:
+        plan_call = plan_log.call(model(planner), key, prompts.plan_prompt(row), PLAN_CAP)
+    return plan_call, prompts.parse_plan(plan_call["text"],
+                                         row.get("max_steps", prompts.MAX_STEPS))
+
+
+def revised_plan(row, plan_log):
+    """DeepSeek's saved plan, checked against the question and corrected by DeepSeek
+    (one call per question, logged in plan_log). -> (calls, steps or None). A revision
+    that does not parse keeps the original plan; the record says so."""
+    original_log = CallLog(plan_log.path.parent / "plans_deepseek.calls.jsonl")
+    original, steps = saved_plan(row, "deepseek", original_log, reuse_only=True)
+    if steps is None:
+        return [original], None
+    call = plan_log.call(model("deepseek"), f"{row['id']}/plan",
+                         prompts.revise_prompt(row, steps), PLAN_CAP)
+    revised = prompts.parse_plan(call["text"], row.get("max_steps", prompts.MAX_STEPS))
+    return [original, call], revised or steps
+
+
+def answer_guided(row, planner, answerer, plan_log, log, rep, variant="plain"):
+    """One call that answers the original question with a plan in context."""
+    if planner == "gold":
+        steps, calls = gold_plan(row), []
+    elif planner == "deepseek_rev":
+        calls, steps = revised_plan(row, plan_log)
+        if steps is None:
+            return "", {"plan": None, "cost": cost(calls)}
+    else:
+        plan_call, steps = saved_plan(row, planner, plan_log, reuse_only=True)
+        calls = [plan_call]
+        if steps is None:  # unusable plan: the question counts as wrong, as in the chain
+            return "", {"plan": None, "raw_plan": plan_call["text"], "cost": cost(calls)}
+    call = log.call(model(answerer), f"{row['id']}/rep{rep}/guided",
+                    prompts.guided_prompt(row, steps, variant), DIRECT_CAP)
+    calls.append(call)
+    answer = prompts.read_answer(call["text"])
+    return answer if answer is not None else call["text"].strip(), {
+        "plan": steps, "valid_format": prompts.final_answer(call["text"])[1],
+        "finish_reason": call["finish_reason"], "output_tokens": call["output_tokens"],
+        "cost": cost(calls), "plan_cost": cost(calls[:-1])}
+
+
+def answer_with_plan(row, planner, answerer, plan_log, log, rep, mode="chain", step_log=None,
+                     reader=None, hop_cap=HOP_CAP):
+    if planner == "gold":
+        plan_call, steps = None, gold_plan(row)
+    else:
+        # Only the original chain methods may draw a plan; every other one reuses it.
+        plan_call, steps = saved_plan(row, planner, plan_log,
+                                      reuse_only=mode != "chain" or hop_cap != HOP_CAP)
+    calls = [plan_call] if plan_call else []
     if steps is None:  # unusable plan: the question counts as wrong
         return "", {"plan": None, "raw_plan": plan_call["text"], "cost": cost(calls)}
     if mode != "chain":
@@ -141,7 +249,7 @@ def answer_with_plan(row, planner, answerer, plan_log, log, rep, mode="chain", s
     for i, step in enumerate(steps):
         question = prompts.substitute(step, answers) + row.get("answer_note", "")
         call = log.call(model(answerer), f"{row['id']}/rep{rep}/hop{i}",
-                        prompts.hop_prompt(question, row), HOP_CAP)
+                        prompts.hop_prompt(question, row), hop_cap)
         answer, valid = prompts.final_answer(call["text"])
         answers.append(answer)
         hops.append({"question": question, "answer": answer, "valid_format": valid,
@@ -149,7 +257,7 @@ def answer_with_plan(row, planner, answerer, plan_log, log, rep, mode="chain", s
                      "output_tokens": call["output_tokens"]})
         calls.append(call)
     return answers[-1], {"plan": steps, "hops": hops, "cost": cost(calls),
-                         "plan_cost": cost([plan_call])}
+                         "plan_cost": cost(calls[:1] if plan_call else [])}
 
 
 def answer_and_aggregate(row, steps, answerer, plan_call, log, rep, mode, step_log, reader):
@@ -200,11 +308,11 @@ def run(method, rep, limit, only=None):
     rows = [json.loads(line) for line in GOLD.open()][:limit]
     if only:  # question numbers as in the trace (Q1 = first row)
         rows = [rows[n - 1] for n in only]
-    planner, answerer = PLANNED.get(method, (None, None))
+    planner, answerer = PLANNED.get(method) or GUIDED.get(method) or (None, None)
     base, mode, reader = split_method(method)
     pred, logs = PRED, LOGS
     if SMALL:
-        assert "qwen" in (planner, answerer) or method == "small", \
+        assert "qwen" in (planner, answerer) or method.startswith("small"), \
             f"{method} uses no small model; reuse the saved run"
         pred, logs = PRED / SMALL, LOGS / SMALL
     log = CallLog(logs / f"{method}_rep{rep}.calls.jsonl")
@@ -212,18 +320,27 @@ def run(method, rep, limit, only=None):
     # DeepSeek-read variant reuses the steps of the run it re-reads.
     step_source = base if mode == "hidden" else f"{base}_context" if reader else None
     step_log = CallLog(logs / f"{step_source}_rep{rep}.calls.jsonl") if step_source else None
-    # DeepSeek's plans are shared by every small model; a small model's own plans are not.
-    plan_log = CallLog((LOGS if planner == "deepseek" else logs)
-                       / f"plans_{planner}.calls.jsonl") if planner else None
+    # DeepSeek's plans are shared by every small model; a small model's own plans are not,
+    # except for the FP8 build of Qwen3-4B, which answers the BF16 model's plans.
+    shared = planner in ("deepseek", "deepseek_rev") or SMALL in SHARES_QWEN_PLANS
+    plan_log = CallLog((LOGS if shared else logs)
+                       / f"plans_{planner}.calls.jsonl") if planner not in (None, "gold") else None
     pred.mkdir(parents=True, exist_ok=True)
     predictions, details = [], []
     for n, row in enumerate(rows, 1):
-        if planner:
+        if method in GUIDED:
+            variant = ("checked" if method.endswith(CHECKED) else "sets"
+                       if method.endswith(SETS) else "commit" if method.endswith(COMMIT)
+                       else "plain")
+            answer, info = answer_guided(row, planner, answerer, plan_log, log, rep, variant)
+        elif planner:
             answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep,
-                                            mode, step_log, reader)
+                                            mode, step_log, reader,
+                                            DIRECT_CAP if base.endswith(CAP) else HOP_CAP)
         else:
-            answer, info = answer_directly(row, "qwen" if method == "small" else "deepseek",
-                                           log, rep)
+            answer, info = answer_directly(
+                row, "qwen" if method.startswith("small") else "deepseek", log, rep,
+                commit=method in COMMITTED)
         predictions.append({"id": row["id"], "predicted_answer": answer,
                             "predicted_support_idxs": [], "predicted_answerable": True})
         details.append({"id": row["id"], "method": method, "rep": rep,

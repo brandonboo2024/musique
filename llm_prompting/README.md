@@ -137,3 +137,35 @@ Outputs: `logs/cs470/phantomwiki48/atomic/<condition>.calls.jsonl` (every call, 
 step question) and `predictions/cs470/phantomwiki48/atomic/<condition>_rep<N>.*`. Step
 scoring against the PhantomWiki oracle is in the CS470 workspace
 (`analysis/failure_cases_lib.py`, `atomic_hop_table`); results are in its RESULTS.org.
+
+## Planning as guidance (`guided_*`, `gold_plan`, `*_cap4096`)
+These cells separate the plan from the splitting into steps, and from the step budget
+(see `run.py`'s docstring for each method). A guided method answers the original
+question in one call with a saved plan (or the gold chain written as a plan) in context.
+`gold_plan` runs the gold plan as a chain. `deepseek_plan_cap4096` and
+`small_plan_cap4096` rerun the chains with the direct cap per step, and `_hidden` re-reads
+them with the final call. No plan is drawn again.
+
+The Qwen cells ran on the 8 GB laptop with `--small qwen3-4b-fp8` (Qwen3-4B-Instruct-2507,
+FP8 build), which answers the BF16 model's saved Qwen plans. The Qwen baselines (`small`,
+the chains and `_hidden`) were rerun the same way, so all Qwen rows share one engine:
+```sh
+# from the workspace root
+VLLM_USE_FLASHINFER_SAMPLER=0 nix develop .#cope -c .venv-vllm/bin/vllm serve \
+  Qwen/Qwen3-4B-Instruct-2507-FP8 --revision 8591804019c8b22094c3b5b4454e0edc05dffc98 \
+  --kv-cache-dtype fp8 --attention-backend TRITON_ATTN --max-model-len 16384 \
+  --gpu-memory-utilization 0.90 --enable-prefix-caching --seed 0 --max-num-seqs 16
+# then, from here
+for d in "" "--dataset phantomwiki48"; do
+  for m in small deepseek_plan small_plan deepseek_plan_hidden small_plan_hidden \
+           guided_deepseek_plan guided_small_plan guided_gold gold_plan \
+           deepseek_plan_cap4096 small_plan_cap4096 \
+           deepseek_plan_cap4096_hidden small_plan_cap4096_hidden; do
+    for r in 0 1 2; do
+      python -m llm_prompting.run --small qwen3-4b-fp8 $d --method $m --rep $r
+    done
+  done
+done
+python -m unittest llm_prompting.test_guided   # offline checks, no model calls
+```
+`*_cap4096_hidden` reuses the steps of `*_cap4096`, so it runs after it.

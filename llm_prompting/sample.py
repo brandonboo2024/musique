@@ -1,10 +1,14 @@
-"""Draw the fixed 48-question MuSiQue-Ans dev sample (16 per hop count).
+"""Draw the fixed MuSiQue-Ans dev samples.
 
-Writes llm_prompting/sample_dev48.json (committed) and data/cs470_dev48.jsonl,
+- dev48 (default): 16 per hop count, the sample of every earlier experiment.
+- dev300: 100 per hop count, drawn with its own seed from the questions not in dev48,
+  for the retrieval-vs-given-context study.
+
+Each writes llm_prompting/sample_<name>.json (committed) and data/cs470_<name>.jsonl,
 the matching subset of the official dev file, in the same order, as
-evaluate_v1.0.py requires.
+evaluate_v1.0.py requires. A committed sample is never redrawn.
 
-    python -m llm_prompting.sample
+    python -m llm_prompting.sample [dev300]
 """
 
 import json
@@ -12,43 +16,54 @@ import random
 from pathlib import Path
 
 DEV = Path("data/musique_ans_v1.0_dev.jsonl")
-SAMPLE = Path("llm_prompting/sample_dev48.json")
-GOLD = Path("data/cs470_dev48.jsonl")
-SEED = 20261009
-PER_HOP = 16
+SAMPLES = {  # name -> (seed, per hop count, samples whose questions are excluded)
+    "dev48": (20261009, 16, ()),
+    "dev300": (20261028, 100, ("dev48",)),
+}
 
 
 def read_dev():
     return [json.loads(line) for line in DEV.open() if line.strip()]
 
 
-def draw():
+def sample_path(name):
+    return Path(f"llm_prompting/sample_{name}.json")
+
+
+def draw(name):
+    seed, per_hop, excluded = SAMPLES[name]
+    taken = {i for other in excluded for i in json.loads(sample_path(other).read_text())["ids"]}
     rows = read_dev()
-    rng = random.Random(SEED)
+    rng = random.Random(seed)
     ids = []
     for hops in (2, 3, 4):
-        pool = sorted(r["id"] for r in rows if r["id"].startswith(f"{hops}hop"))
-        ids += sorted(rng.sample(pool, PER_HOP))
+        pool = sorted(r["id"] for r in rows
+                      if r["id"].startswith(f"{hops}hop") and r["id"] not in taken)
+        ids += sorted(rng.sample(pool, per_hop))
     return ids
 
 
-def write_gold(ids):
+def write_gold(name, ids):
     by_id = {r["id"]: r for r in read_dev()}
-    with GOLD.open("w") as out:
+    with Path(f"data/cs470_{name}.jsonl").open("w") as out:
         for i in ids:
             out.write(json.dumps(by_id[i]) + "\n")
 
 
-def main():
-    if SAMPLE.exists():
-        ids = json.loads(SAMPLE.read_text())["ids"]  # never redraw a committed sample
+def main(name="dev48"):
+    sample = sample_path(name)
+    if sample.exists():
+        ids = json.loads(sample.read_text())["ids"]  # never redraw a committed sample
     else:
-        ids = draw()
-        SAMPLE.write_text(json.dumps(
-            {"source": str(DEV), "seed": SEED, "per_hop": PER_HOP, "ids": ids}, indent=1))
-    write_gold(ids)
-    print(f"{len(ids)} questions -> {SAMPLE}, {GOLD}")
+        seed, per_hop, excluded = SAMPLES[name]
+        ids = draw(name)
+        sample.write_text(json.dumps({"source": str(DEV), "seed": seed, "per_hop": per_hop,
+                                      "excludes": list(excluded), "ids": ids}, indent=1))
+    write_gold(name, ids)
+    print(f"{len(ids)} questions -> {sample}, data/cs470_{name}.jsonl")
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    main(*sys.argv[1:])
