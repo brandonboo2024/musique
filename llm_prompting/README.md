@@ -196,3 +196,16 @@ python -m unittest llm_prompting.test_rag   # offline checks, no model calls, no
 ```
 `llm_prompting/run_retrieval_study.sh <dataset> <rep>` runs every cell of the study in
 eight parallel lanes (five Qwen lanes on the vLLM server, three DeepSeek lanes).
+
+### Question-only plans (`blind_plan`, `linked_plan`, `small_blind_plan`, `small_linked_plan`)
+`deepseek_plan` plans were written by a planner that read the row's 20 passages, so a plan
+can name a hop's answer. `run.py` `PLANNERS` adds planners that see the question only:
+`deepseek_blind` and `qwen_blind` (`prompts.PLAN_BLIND`), and `deepseek_linked` and
+`qwen_linked` (`prompts.PLAN_LINKED`: every reference to an earlier answer must be `#k`).
+Their cells are no-abstain only and only reuse saved plans:
+```sh
+python -m llm_prompting.run --dataset dev300 --draw-plans --planner deepseek_linked
+python -m llm_prompting.run --small qwen3-4b-fp8 --dataset dev300 --draw-plans --planner qwen_linked
+llm_prompting/run_retrieval_study.sh dev300 0 qwen-plans-blind qwen-plans-linked \
+  qwen-plans-small_blind qwen-plans-small_linked
+```

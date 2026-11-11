@@ -5,7 +5,8 @@
 #     dataset: dev48 (the MuSiQue pilot), dev300, phantomwiki48, phantomwiki146
 #     lanes:   qwen-direct qwen-guided-ds qwen-guided-gold qwen-chain-ds qwen-chain-gold
 #              ds-direct ds-guided ds-chain (default: all, in parallel), or "core": the
-#              no-abstain cells the core comparison needs (9 Qwen, 6 DeepSeek)
+#              no-abstain cells the core comparison needs (9 Qwen, 6 DeepSeek); or
+#              qwen-plans-{blind,linked,small_blind,small_linked}: question-only plans
 #
 # Run from external/musique with, for the Qwen lanes, the FP8 Qwen3-4B vLLM server on
 # :8000. PYTHON must have transformers >= 4.51 (Qwen3 embeddings): on Hephaestus the cope
@@ -40,6 +41,11 @@ LANES[qwen-core-guided]="guided_deepseek_plan_commit__ragsub guided_gold_commit_
 LANES[qwen-core-chain-ds]="deepseek_plan_commit deepseek_plan_commit__rag deepseek_plan_commit__rag_final"
 LANES[qwen-core-chain-gold]="gold_plan_commit__rag gold_plan_commit__rag_final"
 LANES[ds-core]="deepseek_commit deepseek_commit__ragq15 guided_deepseek_plan_deepseek_commit__ragsub deepseek_plan_deepseek_commit deepseek_plan_deepseek_commit__rag deepseek_plan_deepseek_commit__rag_final"
+# Question-only plans (run.py PLANNERS; draw them first with --draw-plans --planner): one
+# lane per plan set, the plan in one call, as retrieving steps, and with the final call.
+for set in blind linked small_blind small_linked; do
+  LANES[qwen-plans-$set]="guided_${set}_plan_commit__ragsub ${set}_plan_commit__rag ${set}_plan_commit__rag_final"
+done
 lanes=("$@")
 if [ ${#lanes[@]} -eq 0 ]; then
   lanes=(qwen-direct qwen-guided-ds qwen-guided-gold qwen-chain-ds qwen-chain-gold ds-direct

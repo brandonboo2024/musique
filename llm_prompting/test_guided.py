@@ -48,6 +48,8 @@ class Methods(unittest.TestCase):
             for method, (planner, answerer) in run.GUIDED.items():
                 if planner == "deepseek_rev":
                     continue  # draws new revisions; covered by test_revision_falls_back
+                if planner in run.PLANNERS:
+                    continue  # question-only plans exist for dev300 only; see test_rag
                 plan_log = (None if planner == "gold"
                             else run.CallLog(logs / f"plans_{planner}.calls.jsonl"))
                 for row in rows(gold):

@@ -38,6 +38,32 @@ PLAN = (
     "Do not answer the subquestions. Return only a JSON object with the key "
     "subquestions containing an ordered list of question strings. No other keys."
 )
+# Plans written from the question alone (no passages), for the retrieval settings, where
+# a planner that had read the passages could put a hop's answer into a subquestion.
+PLAN_BLIND = (
+    "Break the question into one to {count} ordered factual subquestions that together "
+    "resolve its final requested relation. No passages are supplied: each subquestion "
+    "will be looked up separately, so do not use your own knowledge of the answers. "
+    "Later subquestions may refer to earlier answers as {refs}. "
+    "The last subquestion must ask for the original question's final answer. "
+    "Do not answer the subquestions. Return only a JSON object with the key "
+    "subquestions containing an ordered list of question strings. No other keys."
+)
+# PLAN_BLIND, with every link between steps written as a placeholder.
+PLAN_LINKED = (
+    "Break the question into one to {count} ordered factual subquestions that together "
+    "resolve its final requested relation. No passages are supplied: each subquestion "
+    "will be looked up separately, so do not use your own knowledge of the answers. "
+    "Each subquestion is read on its own, without the original question or the other "
+    "subquestions. So wherever a subquestion depends on an earlier answer, write that "
+    "answer as {refs} (the answer to that subquestion), never as a description such as "
+    "\"that person\", \"the performer\" or \"this country\", and name every other entity "
+    "in full. "
+    "The last subquestion must ask for the original question's final answer. "
+    "Do not answer the subquestions. Return only a JSON object with the key "
+    "subquestions containing an ordered list of question strings. No other keys."
+)
+PLAN_STYLES = {"passages": PLAN, "blind": PLAN_BLIND, "linked": PLAN_LINKED}
 AGGREGATE = (
     "The question was broken into subquestions, which were answered one at a time; "
     "they are given as subquestion_answers. Use those answers together with the "
@@ -77,12 +103,12 @@ PLAN_REVISE = (
 MAX_STEPS = 4  # MuSiQue; a dataset row may set its own "max_steps" (PhantomWiki: 12)
 
 
-def plan_instruction(max_steps=MAX_STEPS):
+def plan_instruction(max_steps=MAX_STEPS, style="passages"):
     """PLAN for a step cap; for the MuSiQue cap of 4 it is the earlier text verbatim."""
     count = "four" if max_steps == 4 else str(max_steps)
     refs = [f"#{i}" for i in range(1, max_steps)]
     refs = ", ".join(refs[:-1]) + ", or " + refs[-1] if max_steps > 2 else "#1"
-    return PLAN.format(count=count, refs=refs)
+    return PLAN_STYLES[style].format(count=count, refs=refs)
 
 
 def passages(row):
@@ -104,9 +130,13 @@ def direct_prompt(row, commit=False):
     return messages(evidence(row["question"], row) + "\n" + (COMMIT if commit else REASON))
 
 
-def plan_prompt(row):
-    return messages(evidence(row["question"], row) + "\n"
-                    + plan_instruction(row.get("max_steps", MAX_STEPS)))
+def plan_prompt(row, style="passages"):
+    """style "blind" or "linked": the planner sees the question only."""
+    instruction = plan_instruction(row.get("max_steps", MAX_STEPS), style)
+    if style == "passages":
+        return messages(evidence(row["question"], row) + "\n" + instruction)
+    return messages(json.dumps({"question": row["question"]}, ensure_ascii=False)
+                    + "\n" + instruction)
 
 
 def hop_prompt(subquestion, row, commit=False):

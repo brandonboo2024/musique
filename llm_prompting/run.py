@@ -113,6 +113,14 @@ PLANNED["gold_plan_deepseek"] = ("gold", "deepseek")
 PLANNED.update({f"{m}{COMMIT}": PLANNED[m] for m in ("deepseek_plan", "small_plan", "gold_plan",
                                                     "deepseek_plan_deepseek",
                                                     "gold_plan_deepseek")})
+# Planners that see the question only: planner -> (model, prompts.PLAN_STYLES style). Their
+# plans are drawn with --draw-plans --planner and only ever reused; cells are no-abstain.
+PLANNERS = {"deepseek_blind": ("deepseek", "blind"), "deepseek_linked": ("deepseek", "linked"),
+            "qwen_blind": ("qwen", "blind"), "qwen_linked": ("qwen", "linked")}
+BLIND_CHAINS = {"blind_plan": "deepseek_blind", "linked_plan": "deepseek_linked",
+                "small_blind_plan": "qwen_blind", "small_linked_plan": "qwen_linked"}
+PLANNED.update({f"{m}{COMMIT}": (p, "qwen") for m, p in BLIND_CHAINS.items()})
+GUIDED.update({f"guided_{m}{COMMIT}": (p, "qwen") for m, p in BLIND_CHAINS.items()})
 DIRECTS = ("small", "deepseek") + COMMITTED
 # Evidence contexts, as a "__<context>" suffix on a method (default: the row's passages):
 #   ragq       direct or guided: the question's top-k retrieved passages
@@ -127,6 +135,7 @@ RAG_K = 5
 CHAINS = tuple(f"{m}{c}" for m in ("deepseek_plan", "small_plan", "gold_plan",
                                     "deepseek_plan_deepseek", "gold_plan_deepseek")
                for c in ("", COMMIT))  # the chains a context applies to
+CHAINS += tuple(f"{m}{COMMIT}" for m in BLIND_CHAINS)
 METHODS = DIRECTS + tuple(PLANNED) + tuple(GUIDED)
 METHODS += tuple(f"{m}__{ctx}" for ctx, kinds in CONTEXTS.items()
                  for m in (DIRECTS if "direct" in kinds else ())
@@ -140,7 +149,7 @@ _models = {}
 
 def model(name):
     if name not in _models:
-        if name == "qwen":
+        if PLANNERS.get(name, (name,))[0] == "qwen":
             _models[name] = LocalSmall(SMALL) if SMALL else Qwen()
         else:
             _models[name] = DeepSeek()
@@ -238,13 +247,15 @@ def saved_plan(row, planner, plan_log, reuse_only):
     """-> (plan call, steps or None). reuse_only: the plan must be in the log, asked with
     exactly today's prompt; the planner is never loaded."""
     key = f"{row['id']}/plan"
-    if reuse_only or (SMALL and (planner == "deepseek" or SMALL in SHARES_QWEN_PLANS)):
+    messages = prompts.plan_prompt(row, PLANNERS.get(planner, (None, "passages"))[1])
+    if reuse_only or (planner not in PLANNERS and SMALL
+                      and (planner == "deepseek" or SMALL in SHARES_QWEN_PLANS)):
         assert key in plan_log.done, f"no saved {planner} plan for {key}"
         assert plan_log.done[key]["prompt_sha256"] == hashlib.sha256(json.dumps(
-            prompts.plan_prompt(row), sort_keys=True).encode()).hexdigest(), key
+            messages, sort_keys=True).encode()).hexdigest(), key
         plan_call = plan_log.done[key]
     else:
-        plan_call = plan_log.call(model(planner), key, prompts.plan_prompt(row), PLAN_CAP)
+        plan_call = plan_log.call(model(planner), key, messages, PLAN_CAP)
     return plan_call, prompts.parse_plan(plan_call["text"],
                                          row.get("max_steps", prompts.MAX_STEPS))
 
@@ -420,7 +431,8 @@ def run(method, rep, limit, only=None):
     step_log = CallLog(logs / f"{step_source}_rep{rep}.calls.jsonl") if step_source else None
     # DeepSeek's plans are shared by every small model; a small model's own plans are not,
     # except for the FP8 build of Qwen3-4B, which answers the BF16 model's plans.
-    shared = planner in ("deepseek", "deepseek_rev") or SMALL in SHARES_QWEN_PLANS
+    shared = (planner in ("deepseek", "deepseek_rev") or SMALL in SHARES_QWEN_PLANS
+              or PLANNERS.get(planner, ("",))[0] == "deepseek")
     plan_log = CallLog((LOGS if shared else logs)
                        / f"plans_{planner}.calls.jsonl") if planner not in (None, "gold") else None
     pred.mkdir(parents=True, exist_ok=True)
@@ -455,7 +467,8 @@ def run(method, rep, limit, only=None):
 def draw_plans(planner="deepseek"):
     """Write (or replay) the planner's plan for every question of the dataset, so that
     the methods that only reuse saved plans can run on a new sample."""
-    plan_log = CallLog(LOGS / f"plans_{planner}.calls.jsonl")
+    shared = PLANNERS.get(planner, ("deepseek",))[0] == "deepseek" or SMALL in SHARES_QWEN_PLANS
+    plan_log = CallLog((LOGS if shared else LOGS / SMALL) / f"plans_{planner}.calls.jsonl")
     rows = [json.loads(line) for line in GOLD.open()]
     usable = 0
     for row in rows:
@@ -502,7 +515,9 @@ def main():
                         help="only these question numbers, as in the trace (e.g. 9,17,41)")
     parser.add_argument("--evaluate", action="store_true")
     parser.add_argument("--draw-plans", action="store_true",
-                        help="write DeepSeek's plan for every question of the dataset")
+                        help="write the planner's plan for every question of the dataset")
+    parser.add_argument("--planner", choices=("deepseek",) + tuple(PLANNERS), default="deepseek",
+                        help="with --draw-plans: whose plans (a qwen_* planner needs --small)")
     parser.add_argument("--small", choices=sorted(SMALL_MODELS),
                         help="another small model on the local vLLM server instead of Qwen3-4B")
     parser.add_argument("--dataset", choices=DATASETS, help="another dataset instead of MuSiQue")
@@ -512,7 +527,7 @@ def main():
     global SMALL, PRED
     SMALL = args.small
     if args.draw_plans:
-        draw_plans()
+        draw_plans(args.planner)
     elif args.evaluate:
         if SMALL:
             PRED = PRED / SMALL

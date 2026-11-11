@@ -126,6 +126,29 @@ class Contexts(unittest.TestCase):
         key = f"{ROW['id']}/rep0/hop0"
         self.assertEqual(log.done[key]["prompt_sha256"], saved.done[key]["prompt_sha256"])
 
+    def test_question_only_planners(self):
+        """A blind or linked planner sees the question and no passage; the saved-passage
+        plan prompt is unchanged; their cells exist for every retrieval context."""
+        for style in ("blind", "linked"):
+            user = prompts.plan_prompt(ROW, style)[1]["content"]
+            self.assertEqual(json.loads(user.split("\n")[0]), {"question": ROW["question"]})
+            self.assertNotIn(ROW["paragraphs"][0]["paragraph_text"][:40], user)
+        self.assertIn("never as a description", prompts.plan_prompt(ROW, "linked")[1]["content"])
+        self.assertEqual(PLANS.done[f"{ROW['id']}/plan"]["prompt_sha256"], hashlib.sha256(
+            json.dumps(prompts.plan_prompt(ROW), sort_keys=True).encode()).hexdigest())
+        for m in ("linked_plan_commit__rag", "blind_plan_commit__rag_final",
+                  "guided_linked_plan_commit__ragsub", "small_linked_plan_commit__rag"):
+            self.assertIn(m, run.METHODS)
+
+    def test_question_only_plan_is_drawn_once_then_reused(self):
+        plans = MemoryLog()
+        run._models["deepseek_linked"] = FakeModel()
+        run.saved_plan(ROW, "deepseek_linked", plans, reuse_only=False)
+        self.assertEqual(plans.messages[f"{ROW['id']}/plan"],
+                         prompts.plan_prompt(ROW, "linked"))
+        with self.assertRaises(AssertionError):  # a cell never draws a plan itself
+            run.saved_plan(ROW, "deepseek_blind", MemoryLog(), reuse_only=True)
+
 
 if __name__ == "__main__":
     unittest.main()
