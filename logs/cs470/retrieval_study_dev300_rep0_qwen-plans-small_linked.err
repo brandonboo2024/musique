@@ -1,0 +1,20 @@
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<00:51,  6.06it/s]Loading weights:  40%|████      | 125/310 [00:00<00:00, 568.10it/s]Loading weights:  63%|██████▎   | 196/310 [00:00<00:00, 573.71it/s]Loading weights:  84%|████████▍ | 261/310 [00:00<00:00, 504.64it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 502.54it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<00:48,  6.39it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 1785.77it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<00:36,  8.37it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 2490.08it/s]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/Hephaestus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 540, in <module>
+    main()
+  File "/home/Hephaestus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 536, in main
+    run(args.method, args.rep, args.limit, args.only)
+  File "/home/Hephaestus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 448, in run
+    answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep,
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Hephaestus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 335, in answer_with_plan
+    call = (reuse(step_log, key, messages) if ctx == "rag_final"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Hephaestus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 201, in reuse
+    assert call["prompt_sha256"] == hashlib.sha256(json.dumps(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: step prompt differs: 2hop__136214_483189/rep0/hop2
