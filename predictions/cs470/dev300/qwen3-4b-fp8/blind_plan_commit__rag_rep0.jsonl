@@ -244,7 +244,7 @@
 {"id": "4hop1__726391_153080_33952_33939", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__73810_32392_823060_610794", "predicted_answer": "El Paso County", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__749065_698949_157828_239539", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
-{"id": "4hop1__76111_624859_355213_203322", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__76111_624859_355213_203322", "predicted_answer": "Somogy, Tolna, and Bács-Kiskun", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__767417_624859_355213_203322", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__788226_32392_823060_610794", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__814349_624859_355213_203322", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
@@ -282,9 +282,9 @@
 {"id": "4hop3__15567_29339_508306_70744", "predicted_answer": "", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__193820_466199_695123_72134", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__270458_88460_30152_20999", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
-{"id": "4hop3__275416_24325_125104_10557", "predicted_answer": "Dietsch", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop3__275416_24325_125104_10557", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__316459_41402_145922_13584", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
-{"id": "4hop3__316459_41402_146223_13584", "predicted_answer": "none", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop3__316459_41402_146223_13584", "predicted_answer": "No relevant information exists in the passages to address the question.", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__322354_466199_695123_72134", "predicted_answer": "never", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__324979_836463_161616_77103", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__373866_5189_38229_86687", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}

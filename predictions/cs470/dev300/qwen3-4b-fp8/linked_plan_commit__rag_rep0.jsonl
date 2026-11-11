@@ -197,12 +197,12 @@
 {"id": "3hop2__92991_38326_76291", "predicted_answer": "2014", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "3hop2__92991_72083_76291", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "3hop2__93066_88342_47738", "predicted_answer": "after the World Series", "predicted_support_idxs": [], "predicted_answerable": true}
-{"id": "3hop2__93066_88342_90766", "predicted_answer": "1947, 1949, 1952, 1953, 1955, and 1956", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "3hop2__93066_88342_90766", "predicted_answer": "1956", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__105002_17130_70784_61381", "predicted_answer": "1926", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__105688_17130_70784_79935", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__115977_582428_157828_162309", "predicted_answer": "1992", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__129682_59747_211319_557671", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
-{"id": "4hop1__131820_59747_211319_557671", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop1__131820_59747_211319_557671", "predicted_answer": "unknown", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__151650_5274_458768_33677", "predicted_answer": "2013", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__151903_5274_458768_33633", "predicted_answer": "August 3, 1769", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop1__161765_53706_795904_580996", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
@@ -282,8 +282,8 @@
 {"id": "4hop3__15567_29339_508306_70744", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__193820_466199_695123_72134", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__270458_88460_30152_20999", "predicted_answer": "not mentioned in the passages", "predicted_support_idxs": [], "predicted_answerable": true}
-{"id": "4hop3__275416_24325_125104_10557", "predicted_answer": "Medieval Latin", "predicted_support_idxs": [], "predicted_answerable": true}
-{"id": "4hop3__316459_41402_145922_13584", "predicted_answer": "no information available", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop3__275416_24325_125104_10557", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
+{"id": "4hop3__316459_41402_145922_13584", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__316459_41402_146223_13584", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__322354_466199_695123_72134", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}
 {"id": "4hop3__324979_836463_161616_77103", "predicted_answer": "UNKNOWN", "predicted_support_idxs": [], "predicted_answerable": true}

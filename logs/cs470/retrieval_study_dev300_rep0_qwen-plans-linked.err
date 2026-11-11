@@ -18,3 +18,26 @@ Traceback (most recent call last):
     assert call["prompt_sha256"] == hashlib.sha256(json.dumps(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError: step prompt differs: 2hop__14_59409/rep0/hop1
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:01<08:50,  1.72s/it]Loading weights:  45%|████▌     | 141/310 [00:01<00:01, 105.41it/s]Loading weights:  65%|██████▌   | 203/310 [00:02<00:00, 108.94it/s]Loading weights:  78%|███████▊  | 242/310 [00:02<00:00, 114.12it/s]Loading weights:  87%|████████▋ | 271/310 [00:02<00:00, 118.82it/s]Loading weights:  95%|█████████▌| 295/310 [00:03<00:00, 130.30it/s]Loading weights: 100%|██████████| 310/310 [00:03<00:00, 99.66it/s] 
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  26%|██▋       | 82/310 [00:00<00:00, 744.34it/s]Loading weights:  56%|█████▌    | 174/310 [00:00<00:00, 836.39it/s]Loading weights:  85%|████████▍ | 262/310 [00:00<00:00, 847.65it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 856.77it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<00:35,  8.72it/s]Loading weights:  62%|██████▏   | 192/310 [00:00<00:00, 1037.12it/s]Loading weights:  97%|█████████▋| 301/310 [00:00<00:00, 1058.46it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 954.37it/s] 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 540, in <module>
+    main()
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 536, in main
+    run(args.method, args.rep, args.limit, args.only)
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 448, in run
+    answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep,
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 335, in answer_with_plan
+    call = (reuse(step_log, key, messages) if ctx == "rag_final"
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 201, in reuse
+    assert call["prompt_sha256"] == hashlib.sha256(json.dumps(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: step prompt differs: 3hop1__662618_339990_54675/rep0/hop0
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<00:35,  8.64it/s]Loading weights:  24%|██▍       | 75/310 [00:00<00:00, 368.58it/s]Loading weights:  36%|███▌      | 112/310 [00:00<00:00, 272.15it/s]Loading weights:  45%|████▌     | 141/310 [00:00<00:00, 235.62it/s]Loading weights:  54%|█████▎    | 166/310 [00:00<00:00, 222.53it/s]Loading weights:  61%|██████▏   | 190/310 [00:00<00:00, 226.84it/s]Loading weights:  69%|██████▉   | 214/310 [00:00<00:00, 223.64it/s]Loading weights:  80%|███████▉  | 247/310 [00:01<00:00, 230.53it/s]Loading weights:  93%|█████████▎| 289/310 [00:01<00:00, 268.08it/s]Loading weights: 100%|██████████| 310/310 [00:01<00:00, 258.88it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<00:43,  7.12it/s]Loading weights:  66%|██████▋   | 206/310 [00:00<00:00, 1025.12it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 943.69it/s] 
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|█████████▉| 309/310 [00:00<00:00, 3088.79it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 3091.79it/s]

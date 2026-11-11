@@ -1,0 +1,19 @@
+warning: Git tree '/home/Prometheus/103_school_proj/CS470_guided_research' is dirty
+COPE repo environment loaded!
+done qwen-plans-linked guided_linked_plan_commit__ragsub
+done qwen-plans-blind guided_blind_plan_commit__ragsub
+done qwen-plans-small_linked guided_small_linked_plan_commit__ragsub
+done qwen-plans-small_blind guided_small_blind_plan_commit__ragsub
+done qwen-plans-linked linked_plan_commit__rag
+done qwen-plans-small_blind small_blind_plan_commit__rag
+done qwen-plans-blind blind_plan_commit__rag
+done qwen-plans-small_linked small_linked_plan_commit__rag
+done qwen-plans-blind blind_plan_commit__rag_final
+LANE DONE qwen-plans-blind
+done qwen-plans-small_blind small_blind_plan_commit__rag_final
+LANE DONE qwen-plans-small_blind
+done qwen-plans-small_linked small_linked_plan_commit__rag_final
+LANE DONE qwen-plans-small_linked
+done qwen-plans-linked linked_plan_commit__rag_final
+LANE DONE qwen-plans-linked
+ALL LANES DONE dev300 rep0
