@@ -1,0 +1,91 @@
+Traceback (most recent call last):
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/cope/venv/lib/python3.11/site-packages/transformers/models/auto/configuration_auto.py", line 1038, in from_pretrained
+    config_class = CONFIG_MAPPING[config_dict["model_type"]]
+                   ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/cope/venv/lib/python3.11/site-packages/transformers/models/auto/configuration_auto.py", line 740, in __getitem__
+    raise KeyError(key)
+KeyError: 'qwen3'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 525, in <module>
+    main()
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 521, in main
+    run(args.method, args.rep, args.limit, args.only)
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 436, in run
+    answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep,
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 321, in answer_with_plan
+    evidence, pids = (retrieved(row, [question]) if ctx in ("rag", "rag_final")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 220, in retrieved
+    for hits in retrieval.retrieve(pool_of(row), [query_text(q, row) for q in queries], k):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/retrieval.py", line 194, in retrieve
+    return (dense if method == "dense" else bm25)(dataset, queries, k)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/retrieval.py", line 151, in dense
+    scores = embedder()(list(queries), query=True) @ pool_vectors(dataset).T
+             ^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/retrieval.py", line 131, in embedder
+    return Embedder(device or os.environ.get("RETRIEVAL_DEVICE", "cpu"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/retrieval.py", line 112, in __init__
+    self.model = AutoModel.from_pretrained(name, revision=revision,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/cope/venv/lib/python3.11/site-packages/transformers/models/auto/auto_factory.py", line 526, in from_pretrained
+    config, kwargs = AutoConfig.from_pretrained(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/cope/venv/lib/python3.11/site-packages/transformers/models/auto/configuration_auto.py", line 1040, in from_pretrained
+    raise ValueError(
+ValueError: The checkpoint you are trying to load has model type `qwen3` but Transformers does not recognize this architecture. This could be because of an issue with the checkpoint, or because your version of Transformers is out of date.
+Traceback (most recent call last):
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/cope/venv/lib/python3.11/site-packages/transformers/models/auto/configuration_auto.py", line 1038, in from_pretrained
+    config_class = CONFIG_MAPPING[config_dict["model_type"]]
+                   ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/cope/venv/lib/python3.11/site-packages/transformers/models/auto/configuration_auto.py", line 740, in __getitem__
+    raise KeyError(key)
+KeyError: 'qwen3'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 525, in <module>
+    main()
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 521, in main
+    run(args.method, args.rep, args.limit, args.only)
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 436, in run
+    answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep,
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 321, in answer_with_plan
+    evidence, pids = (retrieved(row, [question]) if ctx in ("rag", "rag_final")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 220, in retrieved
+    for hits in retrieval.retrieve(pool_of(row), [query_text(q, row) for q in queries], k):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/retrieval.py", line 194, in retrieve
+    return (dense if method == "dense" else bm25)(dataset, queries, k)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/retrieval.py", line 151, in dense
+    scores = embedder()(list(queries), query=True) @ pool_vectors(dataset).T
+             ^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/retrieval.py", line 131, in embedder
+    return Embedder(device or os.environ.get("RETRIEVAL_DEVICE", "cpu"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/retrieval.py", line 112, in __init__
+    self.model = AutoModel.from_pretrained(name, revision=revision,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/cope/venv/lib/python3.11/site-packages/transformers/models/auto/auto_factory.py", line 526, in from_pretrained
+    config, kwargs = AutoConfig.from_pretrained(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/cope/venv/lib/python3.11/site-packages/transformers/models/auto/configuration_auto.py", line 1040, in from_pretrained
+    raise ValueError(
+ValueError: The checkpoint you are trying to load has model type `qwen3` but Transformers does not recognize this architecture. This could be because of an issue with the checkpoint, or because your version of Transformers is out of date.
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<01:58,  2.61it/s]Loading weights:  41%|████      | 126/310 [00:00<00:00, 337.82it/s]Loading weights:  64%|██████▎   | 197/310 [00:00<00:00, 368.98it/s]Loading weights:  82%|████████▏ | 255/310 [00:00<00:00, 379.38it/s]Loading weights:  99%|█████████▊| 306/310 [00:00<00:00, 380.19it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 327.42it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 3628.41it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  98%|█████████▊| 305/310 [00:00<00:00, 3049.21it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 3086.22it/s]

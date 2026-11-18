@@ -45,6 +45,9 @@ Planning as guidance, and the controls that separate the plan from the splitting
                                  passages and to give the best-supported answer, not UNKNOWN
   guided_deepseek_rev[_deepseek] DeepSeek's saved plan after DeepSeek checks it against
                                  the question and corrects it (plans_deepseek_rev log)
+  <blind chain>[_deepseek]_commit  a question-only plan set (BLIND_CHAINS) as a chain,
+                                 answered by Qwen or, with _deepseek, by DeepSeek;
+                                 guided_<the same> is that plan in one call
   gold_plan                      the gold plan run as a chain, Qwen answers each step
   <method>_cap4096               deepseek_plan or small_plan with 4,096 output tokens
                                  per step (the direct cap) instead of 640; with
@@ -119,8 +122,12 @@ PLANNERS = {"deepseek_blind": ("deepseek", "blind"), "deepseek_linked": ("deepse
             "qwen_blind": ("qwen", "blind"), "qwen_linked": ("qwen", "linked")}
 BLIND_CHAINS = {"blind_plan": "deepseek_blind", "linked_plan": "deepseek_linked",
                 "small_blind_plan": "qwen_blind", "small_linked_plan": "qwen_linked"}
-PLANNED.update({f"{m}{COMMIT}": (p, "qwen") for m, p in BLIND_CHAINS.items()})
-GUIDED.update({f"guided_{m}{COMMIT}": (p, "qwen") for m, p in BLIND_CHAINS.items()})
+# <chain>_deepseek: the same saved plans, DeepSeek answers (planner x answerer crossed).
+ANSWERERS = {"": "qwen", "_deepseek": "deepseek"}
+PLANNED.update({f"{m}{a}{COMMIT}": (p, who) for m, p in BLIND_CHAINS.items()
+                for a, who in ANSWERERS.items()})
+GUIDED.update({f"guided_{m}{a}{COMMIT}": (p, who) for m, p in BLIND_CHAINS.items()
+               for a, who in ANSWERERS.items()})
 DIRECTS = ("small", "deepseek") + COMMITTED
 # Evidence contexts, as a "__<context>" suffix on a method (default: the row's passages):
 #   ragq       direct or guided: the question's top-k retrieved passages
@@ -129,13 +136,17 @@ DIRECTS = ("small", "deepseek") + COMMITTED
 #   rag        chain: each step retrieves for its own sub-question, #k filled in
 #   rag_final  chain: the rag steps (reused), then one final call over the question,
 #              every step's answer and the union of their passages
+#   ragsteps   chain: the rag steps (reused) only for their passages: one direct call over
+#              the question and the union of the steps' passages, with no plan and no
+#              step answer in the prompt (what the plan buys through searching alone)
 CONTEXTS = {"ragq": "direct guided", "ragq15": "direct", "ragsub": "guided",
-            "rag": "chain", "rag_final": "chain"}
+            "rag": "chain", "rag_final": "chain", "ragsteps": "chain"}
+REUSES_RAG_STEPS = ("rag_final", "ragsteps")
 RAG_K = 5
 CHAINS = tuple(f"{m}{c}" for m in ("deepseek_plan", "small_plan", "gold_plan",
                                     "deepseek_plan_deepseek", "gold_plan_deepseek")
                for c in ("", COMMIT))  # the chains a context applies to
-CHAINS += tuple(f"{m}{COMMIT}" for m in BLIND_CHAINS)
+CHAINS += tuple(f"{m}{a}{COMMIT}" for m in BLIND_CHAINS for a in ANSWERERS)
 METHODS = DIRECTS + tuple(PLANNED) + tuple(GUIDED)
 METHODS += tuple(f"{m}__{ctx}" for ctx, kinds in CONTEXTS.items()
                  for m in (DIRECTS if "direct" in kinds else ())
@@ -228,7 +239,21 @@ def retrieved(row, queries, k=RAG_K):
     pids = []
     for hits in retrieval.retrieve(pool_of(row), [query_text(q, row) for q in queries], k):
         pids += [int(p) for p in hits if int(p) not in pids]
-    return {**row, "paragraphs": retrieval.passages(pool_of(row), pids)}, pids
+    return with_passages(row, pids), pids
+
+
+def with_passages(row, pids):
+    return {**row, "paragraphs": retrieval.passages(pool_of(row), pids)}
+
+
+def saved_step_pids(path):
+    """question id -> the pool ids each step of a finished rag cell retrieved, read from
+    its details file. A reused step is shown exactly these passages: retrieving again
+    can swap two near-tied passages when the thread count or machine differs."""
+    if not path.exists():
+        return None
+    return {r["id"]: [h["retrieved"] for h in r.get("hops", ())]
+            for r in map(json.loads, path.open())}
 
 
 def gold_plan(row):
@@ -306,11 +331,13 @@ def answer_guided(row, planner, answerer, plan_log, log, rep, variant="plain", c
 
 
 def answer_with_plan(row, planner, answerer, plan_log, log, rep, mode="chain", step_log=None,
-                     reader=None, hop_cap=HOP_CAP, ctx=None, commit=False):
+                     reader=None, hop_cap=HOP_CAP, ctx=None, commit=False, step_pids=None):
     """ctx "rag": each step answers over its own sub-question's retrieved passages (#k
     filled in); "rag_final": those steps, reused from step_log, then one final call over
-    the question, every step's answer and the union of their passages. commit: steps and
-    final call carry the no-abstain instruction."""
+    the question, every step's answer and the union of their passages; "ragsteps": those
+    steps, reused, then one direct call over the question and the union of their passages
+    alone. commit: steps and final call carry the no-abstain instruction. step_pids: the
+    passages each reused step retrieved, as saved (default: retrieve them again)."""
     if planner == "gold":
         plan_call, steps = None, gold_plan(row)
     else:
@@ -329,10 +356,13 @@ def answer_with_plan(row, planner, answerer, plan_log, log, rep, mode="chain", s
     for i, step in enumerate(steps):
         question = prompts.substitute(step, answers) + note
         key = f"{row['id']}/rep{rep}/hop{i}"
-        evidence, pids = (retrieved(row, [question]) if ctx in ("rag", "rag_final")
-                          else (row, None))
+        if step_pids is not None:
+            assert i < len(step_pids), f"no saved passages for {key}"
+            evidence, pids = with_passages(row, step_pids[i]), list(step_pids[i])
+        else:
+            evidence, pids = (retrieved(row, [question]) if ctx else (row, None))
         messages = prompts.hop_prompt(question, evidence, commit)
-        call = (reuse(step_log, key, messages) if ctx == "rag_final"
+        call = (reuse(step_log, key, messages) if ctx in REUSES_RAG_STEPS
                 else log.call(model(answerer), key, messages, hop_cap))
         answer, valid = prompts.final_answer(call["text"])
         if ctx or commit:  # a new cell: read leniently, as the other new cells are
@@ -347,9 +377,19 @@ def answer_with_plan(row, planner, answerer, plan_log, log, rep, mode="chain", s
         union += [p for p in pids or () if p not in union]
         calls.append(call)
     info = {"plan": steps, "hops": hops, "plan_cost": cost(calls[:1] if plan_call else [])}
-    if ctx != "rag_final":
+    if ctx not in REUSES_RAG_STEPS:
         return answers[-1], {**info, "cost": cost(calls)}
-    final_row = {**row, "paragraphs": retrieval.passages(pool_of(row), union)}
+    final_row = with_passages(row, union)
+    if ctx == "ragsteps":
+        direct = log.call(model(reader or answerer), f"{row['id']}/rep{rep}/direct",
+                          prompts.direct_prompt(final_row, commit), DIRECT_CAP)
+        calls.append(direct)
+        answer = prompts.read_answer(direct["text"])
+        return answer if answer is not None else direct["text"].strip(), {
+            **info, "retrieved": union, "cost": cost(calls),
+            "direct": {"valid_format": prompts.final_answer(direct["text"])[1],
+                       "finish_reason": direct["finish_reason"],
+                       "output_tokens": direct["output_tokens"]}}
     agg = log.call(model(reader or answerer), f"{row['id']}/rep{rep}/aggregate",
                    prompts.aggregate_prompt(final_row, history, commit), DIRECT_CAP)
     calls.append(agg)
@@ -424,9 +464,9 @@ def run(method, rep, limit, only=None):
         pred, logs = PRED / SMALL, LOGS / SMALL
     log = CallLog(logs / f"{full}_rep{rep}.calls.jsonl")
     # Steps reused rather than run: hidden reuses the original method's steps; a
-    # DeepSeek-read variant reuses the steps of the run it re-reads; rag_final reuses
-    # the rag chain's steps.
-    step_source = (f"{method}__rag" if ctx == "rag_final" else base if mode == "hidden"
+    # DeepSeek-read variant reuses the steps of the run it re-reads; rag_final and
+    # ragsteps reuse the rag chain's steps.
+    step_source = (f"{method}__rag" if ctx in REUSES_RAG_STEPS else base if mode == "hidden"
                    else f"{base}_context" if reader else None)
     step_log = CallLog(logs / f"{step_source}_rep{rep}.calls.jsonl") if step_source else None
     # DeepSeek's plans are shared by every small model; a small model's own plans are not,
@@ -436,6 +476,8 @@ def run(method, rep, limit, only=None):
     plan_log = CallLog((LOGS if shared else logs)
                        / f"plans_{planner}.calls.jsonl") if planner not in (None, "gold") else None
     pred.mkdir(parents=True, exist_ok=True)
+    step_pids = (saved_step_pids(pred / f"{step_source}_rep{rep}.details.jsonl")
+                 if ctx in REUSES_RAG_STEPS else None)
     predictions, details = [], []
     for n, row in enumerate(rows, 1):
         if method in GUIDED:
@@ -448,7 +490,8 @@ def run(method, rep, limit, only=None):
             answer, info = answer_with_plan(row, planner, answerer, plan_log, log, rep,
                                             mode, step_log, reader,
                                             DIRECT_CAP if base.endswith(CAP) else HOP_CAP,
-                                            ctx, commit=method.endswith(COMMIT))
+                                            ctx, commit=method.endswith(COMMIT),
+                                            step_pids=(step_pids or {}).get(row["id"]))
         else:
             answer, info = answer_directly(
                 row, "qwen" if method.startswith("small") else "deepseek", log, rep,

@@ -180,8 +180,15 @@ class DeepSeek:
             headers={"Authorization": f"Bearer {self.key}",
                      "Content-Type": "application/json"})
         start = time.monotonic()
-        with urllib.request.urlopen(request, timeout=180) as response:  # no retry: may be billed
-            raw = json.load(response)
+        for attempt in range(6):  # only a 5xx is retried: it returns no completion to bill
+            try:
+                with urllib.request.urlopen(request, timeout=180) as response:
+                    raw = json.load(response)
+                break
+            except urllib.error.HTTPError as err:
+                if err.code < 500 or attempt == 5:
+                    raise
+                time.sleep(2 ** attempt)
         usage = raw["usage"]
         return {
             "model": raw["model"],

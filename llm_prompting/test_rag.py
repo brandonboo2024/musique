@@ -107,6 +107,27 @@ class Contexts(unittest.TestCase):
         self.assertEqual(shown(final), union)
         self.assertIn('"question": ' + json.dumps(ROW["question"]), final[1]["content"])
 
+    def test_ragsteps_shows_the_steps_passages_and_nothing_else(self):
+        """One direct call over the union of the reused steps' passages: the prompt is the
+        direct prompt over those passages, with no plan and no step answer in it."""
+        steps = MemoryLog()
+        _, chain = run.answer_with_plan(ROW, "gold", "qwen", None, steps, 0, ctx="rag",
+                                        commit=True)
+        log = MemoryLog()
+        _, info = run.answer_with_plan(ROW, "gold", "qwen", None, log, 0, ctx="ragsteps",
+                                       step_log=steps, commit=True)
+        self.assertEqual(list(log.messages), [f"{ROW['id']}/rep0/direct"])  # no new steps
+        union = []
+        for hop in chain["hops"]:
+            union += [p for p in hop["retrieved"] if p not in union]
+        self.assertEqual(info["retrieved"], union)
+        asked = log.messages[f"{ROW['id']}/rep0/direct"]
+        self.assertEqual(shown(asked), union)
+        evidence = {**ROW, "paragraphs": run.retrieval.passages("musique", union)}
+        self.assertEqual(asked, prompts.direct_prompt(evidence, True))
+        self.assertIn("gold_plan_commit__ragsteps", run.METHODS)
+        self.assertIn("small_linked_plan_deepseek_commit__ragsteps", run.METHODS)
+
     def test_commit_changes_only_the_instruction(self):
         plain, commit = MemoryLog(), MemoryLog()
         run.answer_with_plan(ROW, "gold", "qwen", None, plain, 0, ctx="rag")
@@ -139,6 +160,18 @@ class Contexts(unittest.TestCase):
         for m in ("linked_plan_commit__rag", "blind_plan_commit__rag_final",
                   "guided_linked_plan_commit__ragsub", "small_linked_plan_commit__rag"):
             self.assertIn(m, run.METHODS)
+
+    def test_question_only_plans_cross_planner_and_answerer(self):
+        """Each question-only plan set is answered by Qwen and by DeepSeek, in one call
+        and as steps, from the same saved plans."""
+        for chain, planner in run.BLIND_CHAINS.items():
+            for suffix, answerer in (("", "qwen"), ("_deepseek", "deepseek")):
+                method = f"{chain}{suffix}_commit"
+                self.assertEqual(run.PLANNED[method], (planner, answerer))
+                self.assertEqual(run.GUIDED[f"guided_{method}"], (planner, answerer))
+                for cell in (f"guided_{method}__ragsub", f"{method}__rag",
+                             f"{method}__rag_final"):
+                    self.assertIn(cell, run.METHODS)
 
     def test_question_only_plan_is_drawn_once_then_reused(self):
         plans = MemoryLog()

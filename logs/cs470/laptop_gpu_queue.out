@@ -1,0 +1,12 @@
+server up: Qwen/Qwen3-4B-Instruct-2507-FP8
+done qwen-core-chain-ds deepseek_plan_commit
+done qwen-core-chain-gold gold_plan_commit__rag
+done qwen-core-chain-ds deepseek_plan_commit__rag
+done qwen-core-guided guided_deepseek_plan_commit__ragsub
+done qwen-core-chain-gold gold_plan_commit__rag_final
+LANE DONE qwen-core-chain-gold
+done qwen-core-chain-ds deepseek_plan_commit__rag_final
+LANE DONE qwen-core-chain-ds
+done qwen-core-guided guided_gold_commit__ragsub
+LANE DONE qwen-core-guided
+ALL LANES DONE phantomwiki48 rep0

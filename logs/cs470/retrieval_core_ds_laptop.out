@@ -1,0 +1,18 @@
+warning: Git tree '/home/Prometheus/103_school_proj/CS470_guided_research' is dirty
+COPE repo environment loaded!
+done ds-core deepseek_commit
+done ds-core deepseek_commit
+FAILED ds-core deepseek_commit__ragq15
+FAILED ds-core deepseek_commit__ragq15
+FAILED ds-core guided_deepseek_plan_deepseek_commit__ragsub
+done ds-core deepseek_plan_deepseek_commit
+done ds-core guided_deepseek_plan_deepseek_commit__ragsub
+done ds-core deepseek_plan_deepseek_commit__rag
+done ds-core deepseek_plan_deepseek_commit__rag_final
+LANE DONE ds-core
+ALL LANES DONE dev300 rep0
+done ds-core deepseek_plan_deepseek_commit
+done ds-core deepseek_plan_deepseek_commit__rag
+done ds-core deepseek_plan_deepseek_commit__rag_final
+LANE DONE ds-core
+ALL LANES DONE phantomwiki146 rep0

@@ -1,0 +1,1 @@
+{"id": "126c65c5-a54e-4e70-90eb-e83302b144fc", "method": "small__ragq", "rep": 0, "answer": "UNKNOWN", "gold": "ballroom dancing", "valid_format": true, "finish_reason": "stop", "cost": {"calls": 1, "input_tokens": 835, "output_tokens": 230, "usd": 0.0, "capped_calls": 0}, "retrieved": [42, 8, 45, 7, 15]}

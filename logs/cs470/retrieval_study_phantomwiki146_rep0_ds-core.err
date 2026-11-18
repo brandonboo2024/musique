@@ -1,0 +1,41 @@
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<01:52,  2.75it/s]Loading weights:  24%|██▍       | 74/310 [00:00<00:01, 207.79it/s]Loading weights:  38%|███▊      | 117/310 [00:00<00:00, 246.30it/s]Loading weights:  50%|█████     | 155/310 [00:00<00:00, 224.79it/s]Loading weights:  60%|██████    | 186/310 [00:00<00:00, 242.82it/s]Loading weights:  70%|███████   | 217/310 [00:01<00:00, 229.72it/s]Loading weights:  79%|███████▊  | 244/310 [00:01<00:00, 226.15it/s]Loading weights:  90%|████████▉ | 278/310 [00:01<00:00, 251.55it/s]Loading weights: 100%|██████████| 310/310 [00:01<00:00, 232.32it/s]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 525, in <module>
+    main()
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 521, in main
+    run(args.method, args.rep, args.limit, args.only)
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 441, in run
+    answer, info = answer_directly(
+                   ^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 164, in answer_directly
+    call = log.call(model(who), f"{row['id']}/rep{rep}/direct",
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/models.py", line 38, in call
+    record = {"key": key, **model.generate(key, messages, max_tokens)}
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/models.py", line 183, in generate
+    with urllib.request.urlopen(request, timeout=180) as response:  # no retry: may be billed
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 216, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 525, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 634, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 563, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 496, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 643, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 500: Internal Server Error
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  36%|███▋      | 113/310 [00:00<00:00, 1118.87it/s]Loading weights:  73%|███████▎  | 225/310 [00:00<00:00, 572.34it/s] Loading weights:  96%|█████████▌| 297/310 [00:00<00:00, 480.93it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 524.15it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  85%|████████▍ | 262/310 [00:00<00:00, 2603.74it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 2789.04it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  82%|████████▏ | 253/310 [00:00<00:00, 2511.63it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 2706.54it/s]

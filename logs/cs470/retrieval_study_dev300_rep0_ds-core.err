@@ -1,0 +1,79 @@
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<00:44,  7.02it/s]Loading weights:  15%|█▌        | 48/310 [00:00<00:01, 234.92it/s]Loading weights:  25%|██▍       | 76/310 [00:00<00:00, 241.53it/s]Loading weights:  33%|███▎      | 103/310 [00:00<00:00, 244.56it/s]Loading weights:  47%|████▋     | 147/310 [00:00<00:00, 295.83it/s]Loading weights:  57%|█████▋    | 178/310 [00:00<00:00, 282.19it/s]Loading weights:  69%|██████▊   | 213/310 [00:00<00:00, 286.58it/s]Loading weights:  83%|████████▎ | 258/310 [00:00<00:00, 309.72it/s]Loading weights:  94%|█████████▎| 290/310 [00:01<00:00, 302.60it/s]Loading weights: 100%|██████████| 310/310 [00:01<00:00, 279.33it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:   0%|          | 1/310 [00:00<01:05,  4.70it/s]Loading weights:  15%|█▌        | 47/310 [00:00<00:01, 183.55it/s]Loading weights:  24%|██▎       | 73/310 [00:00<00:01, 183.13it/s]Loading weights:  31%|███       | 96/310 [00:00<00:01, 172.27it/s]Loading weights:  40%|████      | 125/310 [00:00<00:00, 197.22it/s]Loading weights:  58%|█████▊    | 179/310 [00:00<00:00, 287.49it/s]Loading weights:  77%|███████▋  | 240/310 [00:00<00:00, 377.66it/s]Loading weights:  92%|█████████▏| 285/310 [00:01<00:00, 390.40it/s]Loading weights: 100%|██████████| 310/310 [00:01<00:00, 286.78it/s]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 525, in <module>
+    main()
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 521, in main
+    run(args.method, args.rep, args.limit, args.only)
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 441, in run
+    answer, info = answer_directly(
+                   ^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 164, in answer_directly
+    call = log.call(model(who), f"{row['id']}/rep{rep}/direct",
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/models.py", line 38, in call
+    record = {"key": key, **model.generate(key, messages, max_tokens)}
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/models.py", line 183, in generate
+    with urllib.request.urlopen(request, timeout=180) as response:  # no retry: may be billed
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 216, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 525, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 634, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 563, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 496, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 643, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 500: Internal Server Error
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  49%|████▉     | 152/310 [00:00<00:00, 1499.59it/s]Loading weights:  97%|█████████▋| 302/310 [00:00<00:00, 1171.81it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 1241.46it/s]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 525, in <module>
+    main()
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 521, in main
+    run(args.method, args.rep, args.limit, args.only)
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 433, in run
+    answer, info = answer_guided(row, planner, answerer, plan_log, log, rep, variant,
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/run.py", line 286, in answer_guided
+    call = log.call(model(answerer), f"{row['id']}/rep{rep}/guided",
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/models.py", line 38, in call
+    record = {"key": key, **model.generate(key, messages, max_tokens)}
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/Prometheus/103_school_proj/CS470_guided_research/external/musique/llm_prompting/models.py", line 183, in generate
+    for attempt in range(6):  # only a 5xx is retried: it returns no completion to bill
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 216, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 525, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 634, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 563, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 496, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/nix/store/r8mf7q6hiivm0gj37k02xrqkx58db1lk-python3-3.11.16/lib/python3.11/urllib/request.py", line 643, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 500: Internal Server Error
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  44%|████▎     | 135/310 [00:00<00:00, 1349.18it/s]Loading weights:  87%|████████▋ | 270/310 [00:00<00:00, 1258.02it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 1290.42it/s]
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights:  71%|███████▏  | 221/310 [00:00<00:00, 2162.30it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 2140.00it/s]
